@@ -13,7 +13,12 @@ authors:
     email: paolovella1993@gmail.com
 repository-code: "https://github.com/paolovella/DefectCRN"
 license: Apache-2.0
-version: "3.0.0"
+version: "3.0.1"
+doi: "10.5281/zenodo.18363235"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.18363235"
+    description: "Zenodo archive"
 date-released: "2025-01-24"
 keywords:
   - chemical reaction networks
