@@ -768,9 +768,11 @@ The formalization requires Lean 4.14.0 (install via \texttt{elan}) and can be ve
 \begin{verbatim}
 git clone https://github.com/paolovella/DefectCRN.git
 cd DefectCRN
-lake build
+git checkout v2.0.0
+lake exe cache get   # Download Mathlib cache
+lake build           # Verify all proofs
 \end{verbatim}
-The build completes with zero errors and zero \texttt{sorry} placeholders.
+The build completes with zero errors, zero \texttt{sorry} placeholders, and no custom axioms.
 
 \subsection{File Structure}
 
@@ -780,16 +782,20 @@ The build completes with zero errors and zero \texttt{sorry} placeholders.
 \toprule
 \textbf{File} & \textbf{Description} & \textbf{Lines} & \textbf{Theorems} \\
 \midrule
-\texttt{Basic.lean} & Core Onsager--Rayleigh theory & 852 & 25 \\
-\texttt{CRNT.lean} & Species, deficiency, mass-action & 513 & 15 \\
-\texttt{Examples/Triangle.lean} & 3-cycle verification & 319 & 8 \\
+\texttt{Basic.lean} & Core Onsager--Rayleigh theory & 852 & 38 \\
+\texttt{CRNT.lean} & Species, deficiency, mass-action & 512 & 10 \\
+\texttt{DeficiencyOne.lean} & Deficiency one theorem & 367 & 4 \\
+\texttt{Persistence.lean} & Persistence, permanence, $\omega$-limits & 312 & 8 \\
+\texttt{Stochastic.lean} & Chemical Master Equation & 241 & 6 \\
+\texttt{Examples/Triangle.lean} & 3-cycle verification & 319 & 11 \\
 \texttt{Examples/Cycle.lean} & $n$-cycle parametric & 438 & 8 \\
-\texttt{Examples/MichaelisMenten.lean} & Enzyme kinetics & 407 & 10 \\
+\texttt{Examples/MichaelisMenten.lean} & Enzyme kinetics & 407 & 11 \\
+\texttt{Examples/Glycolysis.lean} & Metabolic network & 237 & 2 \\
 \midrule
-\textbf{Total} & & \textbf{2529} & \textbf{66} \\
+\textbf{Total} & & \textbf{3685} & \textbf{98} \\
 \bottomrule
 \end{tabular}
-\caption{Formalization statistics.}
+\caption{Formalization statistics. Version 2.0.0, zero \texttt{sorry}, zero custom axioms.}
 \label{tab:lean-stats}
 \end{table}
 
@@ -831,6 +837,22 @@ Definition~\ref{def:affinity} & \texttt{affinity} & CRNT.lean & 175 \\
 Theorem~\ref{thm:cycle-affinity} & \texttt{cycle\_affinity\_constant} & CRNT.lean & 270 \\
 Theorem~\ref{thm:def-zero-existence} & \texttt{deficiency\_zero\_equilibrium\_exists} & CRNT.lean & 455 \\
 Theorem~\ref{thm:db-equilibrium} & \texttt{detailed\_balance\_equilibrium} & CRNT.lean & 200 \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Deficiency One (new)}} \\
+Definition & \texttt{hasDeficiencyOne} & DeficiencyOne.lean & 180 \\
+Existence & \texttt{deficiencyOne\_existence} & DeficiencyOne.lean & 255 \\
+Uniqueness & \texttt{deficiencyOne\_uniqueness} & DeficiencyOne.lean & 265 \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Persistence Theory (new)}} \\
+Definition & \texttt{isPersistentCRN} & Persistence.lean & 97 \\
+Definition & \texttt{isPermanentCRN} & Persistence.lean & 126 \\
+Theorem & \texttt{deficiency\_zero\_persistence} & Persistence.lean & 149 \\
+Theorem & \texttt{global\_attractor\_single\_linkage} & Persistence.lean & 276 \\
+\midrule
+\multicolumn{4}{@{}l}{\emph{Stochastic Theory (new)}} \\
+Definition & \texttt{productFormDist} & Stochastic.lean & 123 \\
+Theorem & \texttt{product\_form\_is\_stationary} & Stochastic.lean & 147 \\
+Theorem & \texttt{stochastic\_to\_deterministic\_limit} & Stochastic.lean & 169 \\
 \midrule
 \multicolumn{4}{@{}l}{\emph{Section 6: Examples}} \\
 Proposition~\ref{prop:triangle-ker} & \texttt{ker\_is\_span\_uniform} & Triangle.lean & 95 \\
