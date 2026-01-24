@@ -11,8 +11,8 @@ A formally verified Lean 4 library for Chemical Reaction Network Theory (CRNT), 
 
 ## Highlights
 
-- **3685 lines** of Lean 4 code
-- **98 theorems** fully proven
+- **5214 lines** of Lean 4 code
+- **126 theorems** fully proven
 - **0 sorry** (zero unproven assertions)
 - **0 axioms** (no additional axioms beyond Lean's core)
 - Complete **paper** with formal correspondence table
@@ -42,11 +42,17 @@ DefectCRN/
 ├── DeficiencyOne.lean         # Deficiency one theorem (367 lines)
 ├── Persistence.lean           # Persistence and permanence (312 lines)
 ├── Stochastic.lean            # Chemical Master Equation (241 lines)
+├── HigherDeficiency.lean      # Networks with δ ≥ 2 (175 lines)
+├── Multistability.lean        # Multiple steady states (220 lines)
+├── Oscillations.lean          # Hopf bifurcations, limit cycles (280 lines)
+├── ReactionDiffusion.lean     # Spatial patterns, Turing (260 lines)
+├── Control.lean               # Feedback control (285 lines)
 └── Examples/
     ├── Triangle.lean          # 3-cycle verification (319 lines)
     ├── Cycle.lean             # n-cycle parametric (438 lines)
     ├── MichaelisMenten.lean   # Enzyme kinetics (407 lines)
-    └── Glycolysis.lean        # Metabolic network (237 lines)
+    ├── Glycolysis.lean        # Glycolysis pathway (237 lines)
+    └── TCA.lean               # TCA cycle (265 lines)
 ```
 
 | File | Lines | Theorems | Description |
@@ -56,11 +62,17 @@ DefectCRN/
 | `DeficiencyOne.lean` | 367 | 4 | Deficiency one existence/uniqueness, linkage classes |
 | `Persistence.lean` | 312 | 8 | Trajectories, persistence, permanence, omega-limit sets, siphons |
 | `Stochastic.lean` | 241 | 6 | Discrete states, propensities, product-form distributions, CME |
+| `HigherDeficiency.lean` | 175 | 4 | D2A conditions, concordance, SR-graph |
+| `Multistability.lean` | 220 | 6 | Bifurcations, sign conditions, injectivity |
+| `Oscillations.lean` | 280 | 6 | Hopf bifurcation, limit cycles, Routh-Hurwitz |
+| `ReactionDiffusion.lean` | 260 | 4 | Turing patterns, traveling waves |
+| `Control.lean` | 285 | 6 | Antithetic control, robustness, adaptation |
 | `Triangle.lean` | 319 | 11 | Explicit 3x3 matrices, kernel computation |
 | `Cycle.lean` | 438 | 8 | Parametric n-cycle, Kirchhoff's theorem |
 | `MichaelisMenten.lean` | 407 | 11 | E+S <-> ES -> E+P, QSSA derivation |
-| `Glycolysis.lean` | 237 | 2 | 8-species metabolic pathway, incidence/composition matrices |
-| **Total** | **3685** | **98** | |
+| `Glycolysis.lean` | 237 | 2 | 8-species metabolic pathway |
+| `TCA.lean` | 265 | 2 | TCA cycle, 16 species, conservation laws |
+| **Total** | **5214** | **126** | |
 
 ## Theory Overview
 

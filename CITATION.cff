@@ -13,7 +13,7 @@ authors:
     email: paolovella1993@gmail.com
 repository-code: "https://github.com/paolovella/DefectCRN"
 license: Apache-2.0
-version: "2.0.0"
+version: "3.0.0"
 date-released: "2025-01-24"
 keywords:
   - chemical reaction networks
