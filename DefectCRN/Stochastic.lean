@@ -9,6 +9,7 @@ import Mathlib.Analysis.SpecialFunctions.Pow.Real
 import Mathlib.Analysis.SpecialFunctions.ExpDeriv
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Stochastic Chemical Reaction Networks

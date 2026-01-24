@@ -7,6 +7,7 @@ import DefectCRN.Cohomology.Obstruction
 import DefectCRN.Basic
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Variational Duality: Onsager-Rayleigh Meets Cohomology

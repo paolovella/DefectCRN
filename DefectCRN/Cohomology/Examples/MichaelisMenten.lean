@@ -6,6 +6,7 @@ Authors: Paolo Vella
 import DefectCRN.Cohomology.VariationalDuality
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Michaelis-Menten Example: Deficiency Zero

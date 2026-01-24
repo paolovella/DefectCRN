@@ -7,6 +7,7 @@ import DefectCRN.Basic
 import DefectCRN.DeficiencyOne
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Higher Deficiency Networks (δ ≥ 2)

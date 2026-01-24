@@ -6,6 +6,7 @@ Authors: Paolo Vella
 import DefectCRN.Cohomology.Deficiency
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Physical Interpretation of the DeficiencySubspace

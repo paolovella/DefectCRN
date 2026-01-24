@@ -9,6 +9,7 @@ import DefectCRN.Persistence
 import Mathlib.Analysis.Complex.Basic
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Oscillations in Chemical Reaction Networks

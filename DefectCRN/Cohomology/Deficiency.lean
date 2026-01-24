@@ -7,6 +7,7 @@ import DefectCRN.Cohomology.Cycles
 import DefectCRN.DeficiencyOne
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # The Deficiency Theorem: δ = dim(DeficiencySubspace)

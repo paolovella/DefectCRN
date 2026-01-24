@@ -8,6 +8,7 @@ import DefectCRN.DeficiencyOne
 import DefectCRN.Persistence
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Reaction-Diffusion Systems

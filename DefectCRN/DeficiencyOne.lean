@@ -6,6 +6,9 @@ Authors: Paolo Vella
 import DefectCRN.Basic
 import Mathlib.Data.Matrix.Rank
 
+set_option linter.unusedVariables false
+set_option linter.unusedSectionVars false
+
 /-!
 # Deficiency One Theorem
 

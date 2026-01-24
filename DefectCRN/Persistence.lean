@@ -6,6 +6,9 @@ Authors: Paolo Vella
 import DefectCRN.Basic
 import DefectCRN.DeficiencyOne
 
+set_option linter.unusedVariables false
+set_option linter.unusedSectionVars false
+
 /-!
 # Persistence and Permanence for Chemical Reaction Networks
 

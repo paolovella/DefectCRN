@@ -7,6 +7,7 @@ import DefectCRN.Basic
 import DefectCRN.Cohomology.Foundations.InnerProducts
 
 set_option linter.unusedSectionVars false
+set_option linter.unusedVariables false
 
 /-!
 # Chain Complexes for Chemical Reaction Networks
