@@ -3,7 +3,7 @@
 [![Lean 4](https://img.shields.io/badge/Lean%204-v4.14.0-blue)](https://leanprover.github.io/)
 [![Mathlib4](https://img.shields.io/badge/Mathlib4-latest-green)](https://github.com/leanprover-community/mathlib4)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange)](LICENSE)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18363235.svg)](https://doi.org/10.5281/zenodo.18363235)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18363743.svg)](https://doi.org/10.5281/zenodo.18363743)
 [![Paper](https://img.shields.io/badge/Paper-PDF-red)](paper.pdf)
 
 A formally verified Lean 4 library for Chemical Reaction Network Theory (CRNT), implementing the Onsager-Rayleigh variational framework, deficiency theorems, persistence theory, cohomological deficiency, and stochastic extensions.
