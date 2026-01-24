@@ -12,11 +12,12 @@ A formally verified Lean 4 library for Chemical Reaction Network Theory (CRNT), 
 
 ## Highlights
 
-- **5214 lines** of Lean 4 code
-- **126 theorems** fully proven
+- **6610 lines** of Lean 4 code
+- **189 theorems** fully proven
 - **0 sorry** (zero unproven assertions)
 - **0 axioms** (no additional axioms beyond Lean's core)
 - Complete **paper** with formal correspondence table
+- **NEW**: Cohomological deficiency theory (δ = dim(H¹))
 
 ## Quick Start
 
@@ -48,6 +49,16 @@ DefectCRN/
 ├── Oscillations.lean          # Hopf bifurcations, limit cycles (280 lines)
 ├── ReactionDiffusion.lean     # Spatial patterns, Turing (260 lines)
 ├── Control.lean               # Feedback control (285 lines)
+├── Cohomology/                # NEW: Cohomological deficiency theory
+│   ├── ChainComplex.lean      # CRN chain complex (240 lines)
+│   ├── Cycles.lean            # Cycle/coboundary spaces (280 lines)
+│   ├── Deficiency.lean        # Main theorem: δ = dim(H¹) (290 lines)
+│   ├── Obstruction.lean       # Physical interpretation (240 lines)
+│   ├── VariationalDuality.lean # Onsager-Rayleigh connection (210 lines)
+│   └── Examples/
+│       ├── Triangle.lean      # δ = 0 example (195 lines)
+│       ├── MichaelisMenten.lean # δ = 0 example (230 lines)
+│       └── DeficiencyOne.lean # δ = 1 example (136 lines)
 └── Examples/
     ├── Triangle.lean          # 3-cycle verification (319 lines)
     ├── Cycle.lean             # n-cycle parametric (438 lines)
@@ -68,12 +79,13 @@ DefectCRN/
 | `Oscillations.lean` | 280 | 6 | Hopf bifurcation, limit cycles, Routh-Hurwitz |
 | `ReactionDiffusion.lean` | 260 | 4 | Turing patterns, traveling waves |
 | `Control.lean` | 285 | 6 | Antithetic control, robustness, adaptation |
+| `Cohomology/*` | 1396 | 63 | Chain complex, defect space, δ = dim(H¹) |
 | `Triangle.lean` | 319 | 11 | Explicit 3x3 matrices, kernel computation |
 | `Cycle.lean` | 438 | 8 | Parametric n-cycle, Kirchhoff's theorem |
 | `MichaelisMenten.lean` | 407 | 11 | E+S <-> ES -> E+P, QSSA derivation |
 | `Glycolysis.lean` | 237 | 2 | 8-species metabolic pathway |
 | `TCA.lean` | 265 | 2 | TCA cycle, 16 species, conservation laws |
-| **Total** | **5214** | **126** | |
+| **Total** | **6610** | **189** | |
 
 ## Theory Overview
 
