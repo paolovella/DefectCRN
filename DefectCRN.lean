@@ -2,4 +2,10 @@ import DefectCRN.Basic
 import DefectCRN.DeficiencyOne
 import DefectCRN.Persistence
 import DefectCRN.Stochastic
+import DefectCRN.HigherDeficiency
+import DefectCRN.Multistability
+import DefectCRN.Oscillations
+import DefectCRN.ReactionDiffusion
+import DefectCRN.Control
 import DefectCRN.Examples.Glycolysis
+import DefectCRN.Examples.TCA
