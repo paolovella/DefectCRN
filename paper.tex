@@ -68,7 +68,7 @@
 \begin{abstract}
 We present a comprehensive, formally verified framework for chemical reaction network theory (CRNT). Starting from the Onsager--Rayleigh dissipation principle, we develop the variational characterization of steady-state fluxes via the functional $\OR(J) = \frac{1}{2}\inner{J}{J}_{W^{-1}} - \inner{\omega}{J}$. We systematically extend to: the deficiency zero and one theorems; higher deficiency networks ($\delta \geq 2$) via the Deficiency-Two Algorithm and Species-Reaction graphs; \textbf{cohomological deficiency theory} establishing $\delta = \dim(H^1)$ for the CRN chain complex; multistability and bifurcation theory; oscillations via Hopf bifurcation and the Routh--Hurwitz criterion; reaction-diffusion systems with Turing pattern formation; stochastic CRNs via the Chemical Master Equation; and feedback control theory including antithetic integral control.
 
-The entire framework---comprising \textbf{7211 lines} of Lean 4 code with \textbf{210 theorems} and \textbf{zero unproven assertions or custom axioms}---has been formally verified using the Mathlib library. We demonstrate the theory on examples ranging from the simple $n$-cycle to the complete TCA (Krebs) cycle with 16 species and 10 reactions. This constitutes the first machine-checked formalization of comprehensive chemical reaction network theory.
+The entire framework---comprising \textbf{7861 lines} of Lean 4 code with \textbf{273 theorems} and \textbf{zero unproven assertions, custom axioms, or warnings}---has been formally verified using the Mathlib library. We demonstrate the theory on examples ranging from the simple $n$-cycle to the complete TCA (Krebs) cycle with 16 species and 10 reactions. This constitutes the first machine-checked formalization of comprehensive chemical reaction network theory.
 \end{abstract}
 
 \tableofcontents
@@ -91,7 +91,7 @@ This paper presents a \emph{comprehensive} and \emph{formally verified} treatmen
     \item Control theory (feedback, robustness)
 \end{itemize}
 
-By ``formally verified,'' we mean that every definition, theorem, and proof has been machine-checked in the Lean 4 proof assistant, yielding 7211 lines of code with 210 theorems and zero unproven assertions.
+By ``formally verified,'' we mean that every definition, theorem, and proof has been machine-checked in the Lean 4 proof assistant, yielding 7861 lines of code with 273 theorems and zero unproven assertions, custom axioms, or warnings.
 
 \subsection{Main Contributions}
 
@@ -100,7 +100,7 @@ By ``formally verified,'' we mean that every definition, theorem, and proof has 
 
     \item \textbf{Deficiency Theory} (Sections \ref{sec:crnt}--\ref{sec:higher-def}): Complete treatment of $\delta = 0$, $\delta = 1$, and $\delta \geq 2$ including the Deficiency-Two Algorithm and concordance.
 
-    \item \textbf{Cohomological Deficiency} (Section \ref{sec:cohomology}): Chain complex formulation, $\delta = \dim(H^1)$, obstruction theory, variational duality.
+    \item \textbf{Cohomological Deficiency} (Section \ref{sec:cohomology}): Chain complex formulation, $\delta \cong \dim(H^1)$, degrees of freedom interpretation, variational duality.
 
     \item \textbf{Persistence and Permanence} (Section \ref{sec:persistence}): Omega-limit characterization, siphon theory, global attractors.
 
@@ -345,17 +345,17 @@ The \emph{CycleSpace} is $\ker(Y) \subseteq \R^V$---vectors in the complex space
 The \emph{CoboundarySpace} is $\im(B^\top) \subseteq \R^V$---vectors that arise from flux distributions.
 \end{definition}
 
-\begin{definition}[DefectSpace]
-The \emph{DefectSpace} is $\ker(Y) \cap \im(B^\top)$---the first cohomology group $H^1$ of the chain complex.
+\begin{definition}[DeficiencySubspace]
+The \emph{DeficiencySubspace} is $\ker(Y) \cap \im(B^\top)$---a subspace of $\R^V$ that is canonically isomorphic to the first cohomology group $H^1$ of the chain complex.
 \end{definition}
 
 \subsection{The Main Theorem}
 
 \begin{theorem}[Cohomological Deficiency]
 \label{thm:cohom-deficiency}
-The classical CRNT deficiency equals the dimension of the DefectSpace:
+The classical CRNT deficiency equals the dimension of the DeficiencySubspace:
 \[
-\delta = n - \ell - \rank(N) = \dim(\ker(Y) \cap \im(B^\top)) = \dim(H^1).
+\delta = n - \ell - \rank(N) = \dim(\ker(Y) \cap \im(B^\top)) \cong \dim(H^1).
 \]
 \end{theorem}
 
@@ -366,13 +366,13 @@ The chain complex is exact at $\R^V$ if and only if $\delta = 0$.
 
 \subsection{Physical Interpretation}
 
-\begin{definition}[Obstruction]
-An element $c \in \text{DefectSpace}$ is an \emph{obstruction} to the existence of a steady state: it represents a complex-space vector that arises from fluxes but is invisible to the species dynamics.
+\begin{definition}[Degrees of Freedom]
+An element $c \in \text{DeficiencySubspace}$ represents a \emph{degree of freedom} in the steady-state structure: it is a complex-space vector that arises from fluxes but is invisible to the species dynamics. These degrees of freedom allow for richer steady-state behavior, including multistability.
 \end{definition}
 
-\begin{theorem}[Obstruction Theory]
+\begin{theorem}[Degrees of Freedom Theory]
 \label{thm:obstruction}
-For $\delta > 0$, there exist nonzero vectors $c \in \ker(Y) \cap \im(B^\top)$. These correspond to ``hidden cycles'' in the reaction network that create additional constraints on steady-state existence.
+For $\delta > 0$, there exist nonzero vectors $c \in \ker(Y) \cap \im(B^\top)$. These correspond to ``hidden cycles'' in the reaction network that provide additional degrees of freedom in determining steady-state behavior.
 \end{theorem}
 
 \subsection{Connection to Onsager--Rayleigh}
@@ -383,7 +383,7 @@ Let $J^*$ be the optimal flux from the Onsager--Rayleigh functional. The Lagrang
 \begin{enumerate}[label=(\roman*)]
     \item $\mu \in \text{CoboundarySpace}^{\perp}$ (orthogonal to image of $B^\top$)
     \item For $\delta = 0$: $\mu$ is uniquely determined by the stoichiometry
-    \item For $\delta > 0$: The DefectSpace creates a $\delta$-dimensional family of valid multipliers
+    \item For $\delta > 0$: The DeficiencySubspace creates a $\delta$-dimensional family of valid multipliers
 \end{enumerate}
 \end{theorem}
 
@@ -394,7 +394,7 @@ For the 3-cycle $A \to B \to C \to A$:
 \begin{itemize}
     \item $n = 3$, $\ell = 1$, $\rank(N) = 2$
     \item $\delta = 3 - 1 - 2 = 0$
-    \item DefectSpace $= \{0\}$ (exact)
+    \item DeficiencySubspace $= \{0\}$ (exact)
 \end{itemize}
 \end{example}
 
@@ -403,7 +403,7 @@ For $A \to 2A \to 3A$ over single species $A$:
 \begin{itemize}
     \item $n = 3$, $\ell = 1$, $\rank(N) = 1$
     \item $\delta = 3 - 1 - 1 = 1$
-    \item DefectSpace $= \text{span}\{(-1, 2, -1)\}$ (1-dimensional)
+    \item DeficiencySubspace $= \text{span}\{(-1, 2, -1)\}$ (1-dimensional)
 \end{itemize}
 \end{example}
 
@@ -669,7 +669,7 @@ We have presented a comprehensive framework for chemical reaction network theory
 \begin{enumerate}
     \item \textbf{Variational}: Onsager--Rayleigh functional characterizes optimal fluxes
     \item \textbf{Algebraic}: Deficiency theory ($\delta = 0, 1, \geq 2$) determines equilibrium structure
-    \item \textbf{Cohomological}: $\delta = \dim(H^1)$ reveals deep mathematical structure
+    \item \textbf{Cohomological}: $\delta \cong \dim(H^1)$ reveals deep mathematical structure via DeficiencySubspace
     \item \textbf{Dynamical}: Persistence, multistability, oscillations characterize long-term behavior
     \item \textbf{Spatial}: Reaction-diffusion enables pattern formation
     \item \textbf{Stochastic}: CME extends to finite-copy-number regimes
@@ -685,11 +685,12 @@ The entire framework has been formalized in Lean 4:
 \toprule
 \textbf{Metric} & \textbf{Value} \\
 \midrule
-Lines of code & 7211 \\
-Theorems & 210 \\
+Lines of code & 7861 \\
+Theorems & 273 \\
 \texttt{sorry} (unproven) & 0 \\
 Custom axioms & 0 \\
-Files & 24 \\
+Warnings & 0 \\
+Files & 27 \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -826,7 +827,7 @@ Source code: \url{https://github.com/paolovella/DefectCRN}
 \begin{verbatim}
 git clone https://github.com/paolovella/DefectCRN.git
 cd DefectCRN
-git checkout v4.0.0
+git checkout v5.0.0
 lake exe cache get
 lake build
 \end{verbatim}
@@ -855,6 +856,9 @@ lake build
 \texttt{Cohomology/Deficiency.lean} & Main theorem: $\delta = \dim(H^1)$ & 286 & 15 \\
 \texttt{Cohomology/Obstruction.lean} & Physical interpretation & 241 & 10 \\
 \texttt{Cohomology/VariationalDuality.lean} & Onsager--Rayleigh connection & 258 & 9 \\
+\texttt{Cohomology/Foundations/InnerProducts.lean} & $W$, $W^{-1}$ weighted inner products & 225 & 12 \\
+\texttt{Cohomology/Foundations/CochainComplex.lean} & Graph cochain complex & 111 & 8 \\
+\texttt{Cohomology/Foundations/DeficiencySubspace.lean} & $\ker(Y) \cap \im(B^\top)$ & 199 & 12 \\
 \texttt{Cohomology/Examples/*.lean} & Triangle, MM, Def.\ One & 601 & 21 \\
 \texttt{Examples/Triangle.lean} & 3-cycle & 319 & 11 \\
 \texttt{Examples/Cycle.lean} & $n$-cycle & 438 & 8 \\
@@ -862,10 +866,10 @@ lake build
 \texttt{Examples/Glycolysis.lean} & Metabolic pathway & 237 & 2 \\
 \texttt{Examples/TCA.lean} & Krebs cycle (16 species) & 273 & 2 \\
 \midrule
-\textbf{Total} & & \textbf{7211} & \textbf{210} \\
+\textbf{Total} & & \textbf{7861} & \textbf{273} \\
 \bottomrule
 \end{tabular}
-\caption{Formalization statistics. Version 4.0.0.}
+\caption{Formalization statistics. Version 5.0.0.}
 \end{table}
 
 \subsection{Correspondence Table}
@@ -886,7 +890,7 @@ Thm.~\ref{thm:def-one-existence} & \texttt{deficiencyOne\_existence} & Deficienc
 Thm.~\ref{thm:concordance} & \texttt{concordance\_injectivity} & HigherDeficiency.lean \\
 Thm.~\ref{thm:cohom-deficiency} & \texttt{deficiency\_eq\_dim\_defect\_space} & Cohomology/Deficiency.lean \\
 Cor.~\ref{cor:exactness} & \texttt{deficiency\_zero\_iff\_exact} & Cohomology/Deficiency.lean \\
-Thm.~\ref{thm:obstruction} & \texttt{defect\_is\_obstruction} & Cohomology/Obstruction.lean \\
+Thm.~\ref{thm:obstruction} & \texttt{defect\_is\_degree\_of\_freedom} & Cohomology/Obstruction.lean \\
 Thm.~\ref{thm:var-duality} & \texttt{variational\_cohomology\_duality} & Cohomology/VariationalDuality.lean \\
 Thm.~\ref{thm:def-zero-persistence} & \texttt{deficiency\_zero\_persistence} & Persistence.lean \\
 Thm.~\ref{thm:global-attractor} & \texttt{global\_attractor\_single\_linkage} & Persistence.lean \\
@@ -910,6 +914,7 @@ Explicit in Lean:
     \item \textbf{Incidence property}: \texttt{hBcol : $\forall$ e, $\sum_v$ B v e = 0}
     \item \textbf{Weak reversibility}: Each linkage class is strongly connected
     \item \textbf{Positive concentrations}: \texttt{hpos : isPositive c}
+    \item \textbf{Weighted inner products}: $W$-weighted: $\inner{x}{y}_W = \sum_i W_i x_i y_i$; $W^{-1}$-weighted: $\inner{x}{y}_{W^{-1}} = \sum_i x_i y_i / W_i$
 \end{enumerate}
 
 \end{document}
