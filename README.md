@@ -4,20 +4,21 @@
 [![Mathlib4](https://img.shields.io/badge/Mathlib4-latest-green)](https://github.com/leanprover-community/mathlib4)
 [![License](https://img.shields.io/badge/License-Apache%202.0-orange)](LICENSE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18363235.svg)](https://doi.org/10.5281/zenodo.18363235)
-[![Paper](https://img.shields.io/badge/Paper-PDF-red)](paper_v3.pdf)
+[![Paper](https://img.shields.io/badge/Paper-PDF-red)](paper.pdf)
 
-A formally verified Lean 4 library for Chemical Reaction Network Theory (CRNT), implementing the Onsager-Rayleigh variational framework, deficiency theorems, persistence theory, and stochastic extensions.
+A formally verified Lean 4 library for Chemical Reaction Network Theory (CRNT), implementing the Onsager-Rayleigh variational framework, deficiency theorems, persistence theory, cohomological deficiency, and stochastic extensions.
 
 **Author**: Paolo Vella ([paolovella1993@gmail.com](mailto:paolovella1993@gmail.com))
 
 ## Highlights
 
-- **6610 lines** of Lean 4 code
-- **189 theorems** fully proven
+- **7861 lines** of Lean 4 code
+- **273 theorems** fully proven
 - **0 sorry** (zero unproven assertions)
 - **0 axioms** (no additional axioms beyond Lean's core)
+- **0 warnings** (clean build)
 - Complete **paper** with formal correspondence table
-- **NEW**: Cohomological deficiency theory (δ = dim(H¹))
+- **Cohomological deficiency theory**: DeficiencySubspace isomorphic to H^1
 
 ## Quick Start
 
@@ -31,7 +32,7 @@ lake exe cache get   # Download Mathlib cache
 lake build           # Should complete with 0 errors
 
 # Verify no sorry or axioms
-grep -r "sorry\|axiom" DefectCRN/*.lean DefectCRN/**/*.lean
+grep -r "sorry" DefectCRN/*.lean DefectCRN/**/*.lean
 # Expected: empty output
 ```
 
@@ -44,27 +45,31 @@ DefectCRN/
 ├── DeficiencyOne.lean         # Deficiency one theorem (367 lines)
 ├── Persistence.lean           # Persistence and permanence (312 lines)
 ├── Stochastic.lean            # Chemical Master Equation (241 lines)
-├── HigherDeficiency.lean      # Networks with δ ≥ 2 (175 lines)
-├── Multistability.lean        # Multiple steady states (220 lines)
-├── Oscillations.lean          # Hopf bifurcations, limit cycles (280 lines)
-├── ReactionDiffusion.lean     # Spatial patterns, Turing (260 lines)
-├── Control.lean               # Feedback control (285 lines)
-├── Cohomology/                # NEW: Cohomological deficiency theory
-│   ├── ChainComplex.lean      # CRN chain complex (240 lines)
-│   ├── Cycles.lean            # Cycle/coboundary spaces (280 lines)
-│   ├── Deficiency.lean        # Main theorem: δ = dim(H¹) (290 lines)
-│   ├── Obstruction.lean       # Physical interpretation (240 lines)
-│   ├── VariationalDuality.lean # Onsager-Rayleigh connection (210 lines)
+├── HigherDeficiency.lean      # Networks with δ ≥ 2 (191 lines)
+├── Multistability.lean        # Multiple steady states (238 lines)
+├── Oscillations.lean          # Hopf bifurcations, limit cycles (273 lines)
+├── ReactionDiffusion.lean     # Spatial patterns, Turing (270 lines)
+├── Control.lean               # Feedback control (284 lines)
+├── Cohomology/                # Cohomological deficiency theory
+│   ├── ChainComplex.lean      # CRN chain complex (254 lines)
+│   ├── Cycles.lean            # Cycle/coboundary spaces (307 lines)
+│   ├── Deficiency.lean        # Main theorem: δ ≅ dim(H¹) (286 lines)
+│   ├── Obstruction.lean       # Degrees of freedom interpretation (241 lines)
+│   ├── VariationalDuality.lean # Onsager-Rayleigh connection (258 lines)
+│   ├── Foundations/           # NEW in v5.0: Rigorous foundations
+│   │   ├── InnerProducts.lean # W and W⁻¹ weighted inner products (225 lines)
+│   │   ├── CochainComplex.lean # Graph cochain complex (111 lines)
+│   │   └── DeficiencySubspace.lean # ker(Y) ∩ im(B^T) (199 lines)
 │   └── Examples/
-│       ├── Triangle.lean      # δ = 0 example (195 lines)
-│       ├── MichaelisMenten.lean # δ = 0 example (230 lines)
+│       ├── Triangle.lean      # δ = 0 example (218 lines)
+│       ├── MichaelisMenten.lean # δ = 0 example (249 lines)
 │       └── DeficiencyOne.lean # δ = 1 example (136 lines)
 └── Examples/
     ├── Triangle.lean          # 3-cycle verification (319 lines)
     ├── Cycle.lean             # n-cycle parametric (438 lines)
     ├── MichaelisMenten.lean   # Enzyme kinetics (407 lines)
-    ├── Glycolysis.lean        # Glycolysis pathway (237 lines)
-    └── TCA.lean               # TCA cycle (265 lines)
+    ├── Glycolysis.lean        # Glycolysis pathway (238 lines)
+    └── TCA.lean               # TCA cycle (273 lines)
 ```
 
 | File | Lines | Theorems | Description |
@@ -74,18 +79,14 @@ DefectCRN/
 | `DeficiencyOne.lean` | 367 | 4 | Deficiency one existence/uniqueness, linkage classes |
 | `Persistence.lean` | 312 | 8 | Trajectories, persistence, permanence, omega-limit sets, siphons |
 | `Stochastic.lean` | 241 | 6 | Discrete states, propensities, product-form distributions, CME |
-| `HigherDeficiency.lean` | 175 | 4 | D2A conditions, concordance, SR-graph |
-| `Multistability.lean` | 220 | 6 | Bifurcations, sign conditions, injectivity |
-| `Oscillations.lean` | 280 | 6 | Hopf bifurcation, limit cycles, Routh-Hurwitz |
-| `ReactionDiffusion.lean` | 260 | 4 | Turing patterns, traveling waves |
-| `Control.lean` | 285 | 6 | Antithetic control, robustness, adaptation |
-| `Cohomology/*` | 1396 | 63 | Chain complex, defect space, δ = dim(H¹) |
-| `Triangle.lean` | 319 | 11 | Explicit 3x3 matrices, kernel computation |
-| `Cycle.lean` | 438 | 8 | Parametric n-cycle, Kirchhoff's theorem |
-| `MichaelisMenten.lean` | 407 | 11 | E+S <-> ES -> E+P, QSSA derivation |
-| `Glycolysis.lean` | 237 | 2 | 8-species metabolic pathway |
-| `TCA.lean` | 265 | 2 | TCA cycle, 16 species, conservation laws |
-| **Total** | **6610** | **189** | |
+| `HigherDeficiency.lean` | 191 | 4 | D2A conditions, concordance, SR-graph |
+| `Multistability.lean` | 238 | 7 | Bifurcations, sign conditions, injectivity |
+| `Oscillations.lean` | 273 | 5 | Hopf bifurcation, limit cycles, Routh-Hurwitz |
+| `ReactionDiffusion.lean` | 270 | 3 | Turing patterns, traveling waves |
+| `Control.lean` | 284 | 7 | Antithetic control, robustness, adaptation |
+| `Cohomology/*` | 1931 | 95 | Chain complex, DeficiencySubspace, δ ≅ dim(H¹), Foundations |
+| `Examples/*` | 1675 | 34 | Triangle, Cycle, Michaelis-Menten, Glycolysis, TCA |
+| **Total** | **7861** | **273** | |
 
 ## Theory Overview
 
@@ -94,6 +95,10 @@ DefectCRN/
 The central functional:
 
 $$F(J) = \frac{1}{2}\langle J, J \rangle_{W^{-1}} - \langle \omega, J \rangle$$
+
+**Weighted Inner Products (v5.0):**
+- W-weighted: $\langle x, y \rangle_W = \sum_i W_i x_i y_i$
+- W⁻¹-weighted: $\langle x, y \rangle_{W^{-1}} = \sum_i x_i y_i / W_i$
 
 **Main Results:**
 
@@ -107,59 +112,62 @@ $$F(J) = \frac{1}{2}\langle J, J \rangle_{W^{-1}} - \langle \omega, J \rangle$$
 ### Part 2: CRNT Deficiency Theory
 
 **Definitions:**
-- Stoichiometric matrix: N = Y . B
-- Deficiency: delta = n - l - rank(N)
+- Stoichiometric matrix: N = Y · B
+- Deficiency: δ = n - l - rank(N)
 
 **Main Results:**
 
 | Theorem | Lean Name | Statement |
 |---------|-----------|-----------|
 | Cycle Affinity | `cycle_affinity_constant` | A_cycle independent of concentration |
-| Deficiency Zero | `deficiency_zero_equilibrium_exists` | delta=0 + WR => exists positive equilibrium |
-| Detailed Balance | `detailed_balance_equilibrium_const` | DB => ln(K_e) = N . ln(c) |
+| Deficiency Zero | `deficiency_zero_equilibrium_exists` | δ=0 + WR => exists positive equilibrium |
+| Detailed Balance | `detailed_balance_equilibrium_const` | DB => ln(K_e) = N · ln(c) |
 
-### Part 3: Deficiency One Theorem
+### Part 3: Cohomological Deficiency Theory
 
-For networks with deficiency delta = 1:
+**Chain Complex:**
+$$0 \to \mathbb{R}^E \xrightarrow{B^T} \mathbb{R}^V \xrightarrow{Y} \mathbb{R}^S \to 0$$
+
+**Key Definition (v5.0):**
+- **DeficiencySubspace** = ker(Y) ∩ im(B^T) ≅ H¹
+
+This is the space of complex vectors arising from fluxes but invisible to species dynamics.
+
+**Physical Interpretation:**
+- Elements of DeficiencySubspace represent **degrees of freedom** in steady-state behavior
+- δ > 0 allows richer dynamics including multistability
 
 | Theorem | Lean Name | Statement |
 |---------|-----------|-----------|
-| Existence | `deficiencyOne_existence` | delta=1 + WR + conditions => exists equilibrium |
-| Uniqueness | `deficiencyOne_uniqueness` | Under D1A conditions, equilibrium is unique up to scaling |
-| Onsager Optimal | `deficiencyOne_onsager_optimal` | KKT conditions imply variational optimality |
+| Cohomological Deficiency | `deficiency_eq_dim_defect_space` | δ = dim(DeficiencySubspace) ≅ dim(H¹) |
+| Exactness | `deficiency_zero_iff_exact` | δ = 0 iff chain complex exact at V |
+| Variational Duality | `variational_cohomology_duality` | Connection to Onsager-Rayleigh multipliers |
 
 ### Part 4: Persistence and Permanence
-
-Global stability analysis for CRNs:
 
 | Concept | Lean Name | Description |
 |---------|-----------|-------------|
 | Persistence | `isPersistentCRN` | No species concentration approaches zero |
 | Permanence | `isPermanentCRN` | Compact attractor bounded away from boundary |
-| Omega-limit | `omegaLimitSet` | Asymptotic behavior characterization |
-| Siphons | `isSiphon` | Structural conditions for persistence |
 | Global Attractor | `GlobalAttractorProperty` | Anderson (2011) single linkage class result |
 
 ### Part 5: Stochastic Chemical Reaction Networks
 
-Extension to the Chemical Master Equation:
-
 | Concept | Lean Name | Description |
 |---------|-----------|-------------|
-| Discrete State | `State` | Molecule counts n in N^S |
-| Product Form | `productFormDist` | pi(n) proportional to prod_s c_s^{n_s} / n_s! |
+| Product Form | `productFormDist` | π(n) ∝ ∏_s c_s^{n_s} / n_s! |
 | CME Stationary | `product_form_is_stationary` | Product form is CME stationary distribution |
-| Deterministic Limit | `stochastic_to_deterministic_limit` | Kurtz theorem: n(t)/V -> c(t) as V -> infinity |
-| Fluctuation-Dissipation | `fluctuation_dissipation` | Connection to Onsager coefficients |
+| Deterministic Limit | `stochastic_to_deterministic_limit` | Kurtz: n(t)/V → c(t) as V → ∞ |
 
 ### Part 6: Examples
 
 | Example | Species | Reactions | Key Result |
 |---------|---------|-----------|------------|
-| **Triangle** | 3 | 3 | ker(B) = R . (1,1,1), J* = mean(omega) . 1 |
+| **Triangle** | 3 | 3 | ker(B) = ℝ · (1,1,1), J* = mean(ω) · 1 |
 | **n-Cycle** | n | n | Kirchhoff: current = total EMF / total resistance |
-| **Michaelis-Menten** | 4 | 3 | v = V_max . [S] / (K_m + [S]) with delta = 0 |
-| **Glycolysis** | 8 | 8 | Simplified metabolic pathway, 12 complexes |
+| **Michaelis-Menten** | 4 | 3 | v = V_max · [S] / (K_m + [S]) with δ = 0 |
+| **Glycolysis** | 8 | 8 | Simplified metabolic pathway |
+| **TCA** | 16 | 10 | Complete Krebs cycle with conservation laws |
 
 ## Paper
 
@@ -168,54 +176,17 @@ The accompanying paper (`paper.pdf`) provides:
 - All proofs in traditional notation
 - Correspondence table (Appendix A) mapping each theorem to Lean
 
-### Paper <-> Lean Correspondence
+### Paper <-> Lean Correspondence (Selected)
 
 | Paper | Lean Theorem | File |
 |-------|--------------|------|
 | Theorem 2.3 (Hodge) | `hodge_decomp` | Basic.lean |
 | Theorem 4.2 (Optimality) | `onsager_rayleigh_optimal` | Basic.lean |
-| Corollary 4.3 (Uniqueness) | `onsager_rayleigh_unique` | Basic.lean |
-| Theorem 5.10 (Cycle Affinity) | `cycle_affinity_constant` | CRNT.lean |
 | Theorem 5.11 (Def Zero) | `deficiency_zero_equilibrium_exists` | CRNT.lean |
-| Theorem 5.12 (Def One) | `deficiencyOne_existence` | DeficiencyOne.lean |
-| Theorem 6.1 (Persistence) | `deficiency_zero_persistence` | Persistence.lean |
-| Theorem 6.5 (Product Form) | `product_form_is_stationary` | Stochastic.lean |
-| Theorem 7.8 (Michaelis-Menten) | `michaelis_menten_velocity` | MichaelisMenten.lean |
+| Theorem 7.1 (Cohom. Def.) | `deficiency_eq_dim_defect_space` | Cohomology/Deficiency.lean |
+| Theorem 7.4 (Degrees of Freedom) | `defect_is_degree_of_freedom` | Cohomology/Obstruction.lean |
 
 See `paper.pdf` Appendix A for the complete correspondence table.
-
-## Important Notes
-
-### Scope and Assumptions
-
-1. **Deficiency Zero Theorem**: Follows Feinberg-Horn-Jackson definitions
-   - Weak reversibility = each linkage class is strongly connected
-   - Uniqueness is per stoichiometric compatibility class
-
-2. **Deficiency One Theorem**: Feinberg (1995) extension
-   - Requires all linkage class deficiencies delta_i = 0
-   - Global deficiency delta = 1
-
-3. **Persistence Theory**: Based on Angeli-De Leenheer-Sontag (2007)
-   - Siphon-based structural conditions
-   - Connection to Lyapunov stability
-
-4. **Stochastic Extensions**: Anderson-Craciun-Kurtz (2010)
-   - Product-form stationary distributions
-   - Thermodynamic limit connections
-
-5. **Michaelis-Menten**: Derived under standard QSSA
-   - Quasi-steady state for ES complex
-   - Enzyme conservation: [E] + [ES] = E_total
-
-### Graph Deficiency vs CRNT Deficiency
-
-| Concept | Formula | Location |
-|---------|---------|----------|
-| Graph deficiency | delta_graph = \|V\| - l - rank(B) | `Basic.lean` |
-| CRNT deficiency | delta = \|V\| - l - rank(YB) | `CRNT.lean` |
-
-Graph deficiency = 0 for any connected graph. CRNT deficiency can be > 0.
 
 ## Requirements
 
@@ -226,12 +197,12 @@ Graph deficiency = 0 for any connected graph. CRNT deficiency can be > 0.
 ## Citation
 
 ```bibtex
-@software{vella2025defectcrn,
+@software{vella2026defectcrn,
   author = {Vella, Paolo},
   title = {DefectCRN: Formal Verification of Chemical Reaction Network Theory},
-  year = {2025},
+  year = {2026},
   url = {https://github.com/paolovella/DefectCRN},
-  version = {2.0}
+  version = {5.0.0}
 }
 ```
 
