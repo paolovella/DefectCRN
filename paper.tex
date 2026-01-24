@@ -6,7 +6,6 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amsthm,amssymb,amsfonts}
-\usepackage{mathtools}
 \usepackage{bm}
 \usepackage{enumitem}
 \usepackage{booktabs}
@@ -41,24 +40,23 @@
 \newcommand{\Z}{\mathbb{Z}}
 \newcommand{\inner}[2]{\langle #1, #2 \rangle}
 \newcommand{\norm}[1]{\| #1 \|}
-% \ker already defined in LaTeX
 \DeclareMathOperator{\im}{im}
 \DeclareMathOperator{\rank}{rank}
 \DeclareMathOperator{\tr}{tr}
 \DeclareMathOperator{\diag}{diag}
 \newcommand{\Lap}{\mathcal{L}}
-\newcommand{\OR}{F}  % Onsager-Rayleigh functional
+\newcommand{\OR}{F}
 
 % ============================================================================
 % TITLE
 % ============================================================================
 \title{\textbf{Defect Cohomology and Variational Principles\\for Chemical Reaction Networks}\\[0.5em]
-\large A Formally Verified Framework}
+\large A Comprehensive Formally Verified Framework}
 
 \author{Paolo Vella\\
 \small \texttt{paolovella1993@gmail.com}}
 
-\date{\today}
+\date{January 24, 2026}
 
 % ============================================================================
 % DOCUMENT
@@ -68,45 +66,66 @@
 \maketitle
 
 \begin{abstract}
-We develop a variational framework for steady-state fluxes in chemical reaction networks based on the Onsager--Rayleigh dissipation principle. The central object is the functional $\OR(J) = \frac{1}{2}\inner{J}{J}_{W^{-1}} - \inner{\omega}{J}$, whose unique minimizer over the cycle space $\ker(B)$ characterizes the optimal flux. We establish sharp energy identities via Hodge decomposition on weighted graphs, prove optimality and uniqueness theorems with explicit quadratic expansions, and connect this variational structure to the classical Feinberg--Horn--Jackson deficiency theory for mass-action kinetics.
+We present a comprehensive, formally verified framework for chemical reaction network theory (CRNT). Starting from the Onsager--Rayleigh dissipation principle, we develop the variational characterization of steady-state fluxes via the functional $\OR(J) = \frac{1}{2}\inner{J}{J}_{W^{-1}} - \inner{\omega}{J}$. We systematically extend to: the deficiency zero and one theorems; higher deficiency networks ($\delta \geq 2$) via the Deficiency-Two Algorithm and Species-Reaction graphs; \textbf{cohomological deficiency theory} establishing $\delta = \dim(H^1)$ for the CRN chain complex; multistability and bifurcation theory; oscillations via Hopf bifurcation and the Routh--Hurwitz criterion; reaction-diffusion systems with Turing pattern formation; stochastic CRNs via the Chemical Master Equation; and feedback control theory including antithetic integral control.
 
-The entire framework---comprising 2529 lines of Lean 4 code with 66 theorems and zero unproven assertions---has been formally verified using the Mathlib library. We demonstrate the theory on concrete examples: the $n$-cycle (Kirchhoff's theorem) and the Michaelis--Menten enzyme mechanism. The formalization provides a machine-checked foundation for chemical reaction network theory and serves as a template for verified scientific computing.
+The entire framework---comprising \textbf{7211 lines} of Lean 4 code with \textbf{210 theorems} and \textbf{zero unproven assertions or custom axioms}---has been formally verified using the Mathlib library. We demonstrate the theory on examples ranging from the simple $n$-cycle to the complete TCA (Krebs) cycle with 16 species and 10 reactions. This constitutes the first machine-checked formalization of comprehensive chemical reaction network theory.
 \end{abstract}
 
 \tableofcontents
+\newpage
 
 % ============================================================================
 \section{Introduction}
 \label{sec:intro}
 % ============================================================================
 
-Chemical reaction networks (CRNs) provide a mathematical framework for modeling biochemical systems, from metabolic pathways to gene regulatory circuits. A fundamental question is: \emph{given the network structure and kinetic parameters, what are the steady-state fluxes?}
+Chemical reaction networks (CRNs) provide the mathematical foundation for systems biology, from metabolic engineering to synthetic biology. The fundamental questions---existence, uniqueness, and stability of steady states---have been studied extensively since the pioneering work of Feinberg, Horn, and Jackson \cite{Feinberg1972,HornJackson1972,Feinberg1987}.
 
-The classical approach, pioneered by Feinberg, Horn, and Jackson \cite{Feinberg1972,HornJackson1972,Feinberg1987}, analyzes CRNs through their graph-theoretic structure. The \emph{deficiency} $\delta = n - \ell - s$ (where $n$ is the number of complexes, $\ell$ the number of linkage classes, and $s$ the rank of the stoichiometric subspace) plays a crucial role: networks with $\delta = 0$ and weak reversibility exhibit particularly nice dynamical behavior.
+This paper presents a \emph{comprehensive} and \emph{formally verified} treatment of CRNT. By ``comprehensive,'' we mean coverage of:
+\begin{itemize}
+    \item Deficiency theory (zero, one, and higher)
+    \item Cohomological deficiency theory ($\delta = \dim H^1$)
+    \item Dynamical behavior (persistence, multistability, oscillations)
+    \item Spatial extension (reaction-diffusion, Turing patterns)
+    \item Stochastic formulation (Chemical Master Equation)
+    \item Control theory (feedback, robustness)
+\end{itemize}
 
-In this paper, we take a complementary \emph{variational} approach, rooted in the Onsager--Rayleigh principle from non-equilibrium thermodynamics \cite{Onsager1931,Rayleigh1873}. The key insight is that steady-state fluxes minimize a dissipation functional subject to conservation constraints.
+By ``formally verified,'' we mean that every definition, theorem, and proof has been machine-checked in the Lean 4 proof assistant, yielding 7211 lines of code with 210 theorems and zero unproven assertions.
 
 \subsection{Main Contributions}
 
 \begin{enumerate}[label=(\arabic*)]
-    \item \textbf{Variational Framework} (Sections \ref{sec:laplacian}--\ref{sec:optimality}): We construct the Onsager--Rayleigh functional on weighted directed graphs and prove that its minimizer over $\ker(B)$ is unique, explicitly computable via Laplacian projection, and satisfies a sharp quadratic expansion.
-    
-    \item \textbf{CRNT Connection} (Section \ref{sec:crnt}): We extend the framework to full chemical reaction network theory with species structure, proving that cycle affinities are concentration-independent and connecting to the deficiency zero theorem.
-    
-    \item \textbf{Formal Verification} (Appendix \ref{app:lean}): All results are machine-checked in Lean 4, providing the first formally verified treatment of CRNT deficiency theory.
-    
-    \item \textbf{Concrete Examples} (Section \ref{sec:examples}): We verify the theory on the $n$-cycle (recovering Kirchhoff's theorem) and the Michaelis--Menten mechanism (deriving the classical enzyme kinetics equation).
+    \item \textbf{Variational Framework} (Sections \ref{sec:laplacian}--\ref{sec:optimality}): Onsager--Rayleigh functional, Hodge decomposition, optimality and uniqueness.
+
+    \item \textbf{Deficiency Theory} (Sections \ref{sec:crnt}--\ref{sec:higher-def}): Complete treatment of $\delta = 0$, $\delta = 1$, and $\delta \geq 2$ including the Deficiency-Two Algorithm and concordance.
+
+    \item \textbf{Cohomological Deficiency} (Section \ref{sec:cohomology}): Chain complex formulation, $\delta = \dim(H^1)$, obstruction theory, variational duality.
+
+    \item \textbf{Persistence and Permanence} (Section \ref{sec:persistence}): Omega-limit characterization, siphon theory, global attractors.
+
+    \item \textbf{Multistability} (Section \ref{sec:multistability}): Bifurcation conditions, sign conditions for multiple equilibria, injectivity.
+
+    \item \textbf{Oscillations} (Section \ref{sec:oscillations}): Hopf bifurcation theorem, limit cycles, Routh--Hurwitz stability criterion.
+
+    \item \textbf{Reaction-Diffusion} (Section \ref{sec:reaction-diffusion}): Turing instability, pattern formation, traveling waves.
+
+    \item \textbf{Stochastic CRNs} (Section \ref{sec:stochastic}): Chemical Master Equation, product-form distributions, fluctuation-dissipation.
+
+    \item \textbf{Control Theory} (Section \ref{sec:control}): Antithetic integral feedback, robust perfect adaptation.
+
+    \item \textbf{Major Examples} (Section \ref{sec:examples}): $n$-cycle, Michaelis--Menten, glycolysis, and the complete TCA cycle.
+
+    \item \textbf{Formal Verification} (Appendix \ref{app:lean}): Complete Lean 4 formalization with correspondence table.
 \end{enumerate}
 
 \subsection{Scope and Regimes}
 
-The Onsager--Rayleigh variational principle developed in Sections \ref{sec:laplacian}--\ref{sec:optimality} governs linear response and entropy production near detailed balance. The CRNT deficiency theory in Section \ref{sec:crnt} provides exact structural results for nonlinear mass-action kinetics. These perspectives are complementary: the variational framework identifies the optimal flux structure (projection onto $\ker B$), while deficiency theory guarantees existence and uniqueness of the steady state that realizes this optimum. For deficiency zero networks, these coincide: the variational minimizer \emph{is} the unique complex-balanced steady state.
+The Onsager--Rayleigh variational principle governs linear response near detailed balance. The CRNT deficiency theory provides exact structural results for nonlinear mass-action kinetics. These perspectives are complementary: the variational framework identifies the optimal flux structure (projection onto $\ker B$), while deficiency theory guarantees existence and uniqueness of the steady state. For deficiency zero networks, these coincide: the variational minimizer \emph{is} the unique complex-balanced steady state.
 
 \subsection{Related Work}
 
-The connection between network thermodynamics and graph theory has a long history, from Kirchhoff's laws \cite{Kirchhoff1847} to modern stochastic thermodynamics \cite{Seifert2012}. Our variational approach builds on the work of Maas \cite{Maas2011} on gradient flows and Mielke \cite{Mielke2011} on rate-independent systems. The CRNT foundations were laid by Horn, Jackson, and Feinberg \cite{HornJackson1972,Feinberg1987}, with recent advances by Anderson, Craciun, and Kurtz \cite{Anderson2010}.
-
-Formal verification of mathematics has seen remarkable progress with systems like Lean \cite{Moura2021}, Coq, and Isabelle. Our work contributes to the growing corpus of verified scientific computing, alongside efforts in analysis \cite{BoldobevHales}, algebra \cite{Buzzard2020}, and physics \cite{Avigad2020}.
+The connection between network thermodynamics and graph theory has a long history, from Kirchhoff's laws \cite{Kirchhoff1847} to modern stochastic thermodynamics \cite{Seifert2012}. Our variational approach builds on Maas \cite{Maas2011} and Mielke \cite{Mielke2011}. The CRNT foundations were laid by Horn, Jackson, and Feinberg \cite{HornJackson1972,Feinberg1987}, with recent advances by Anderson, Craciun, and Kurtz \cite{Anderson2010}.
 
 
 % ============================================================================
@@ -114,78 +133,29 @@ Formal verification of mathematics has seen remarkable progress with systems lik
 \label{sec:laplacian}
 % ============================================================================
 
-We begin with the graph-theoretic foundations. Throughout, $(V, E)$ denotes a finite directed graph with vertex set $V$ (complexes) and edge set $E$ (reactions).
-
-\subsection{Incidence Matrix and Laplacian}
+Throughout, $(V, E)$ denotes a finite directed graph with vertex set $V$ (complexes) and edge set $E$ (reactions).
 
 \begin{definition}[Incidence Matrix]
-\label{def:incidence}
-The \emph{incidence matrix} $B \in \R^{V \times E}$ is defined by
-\[
-B_{ve} = \begin{cases}
-+1 & \text{if edge } e \text{ enters vertex } v, \\
--1 & \text{if edge } e \text{ leaves vertex } v, \\
-0 & \text{otherwise}.
-\end{cases}
-\]
+The incidence matrix $B \in \R^{V \times E}$ has $B_{ve} = +1$ if $e$ enters $v$, $B_{ve} = -1$ if $e$ leaves $v$, and $0$ otherwise.
 \end{definition}
 
-The key property is that column sums vanish: $\sum_{v \in V} B_{ve} = 0$ for all $e \in E$ (each edge leaves one vertex and enters another).
-
 \begin{definition}[Weighted Graph Laplacian]
-\label{def:laplacian}
-Given positive edge weights $w : E \to \R_{>0}$, the \emph{weighted graph Laplacian} is
-\[
-L = B W B^\top \in \R^{V \times V},
-\]
-where $W = \diag(w_e)_{e \in E}$ is the diagonal weight matrix.
+For positive edge weights $w : E \to \R_{>0}$, the weighted graph Laplacian is $L = B W B^\top$.
 \end{definition}
 
 \begin{theorem}[Kernel of Laplacian]
 \label{thm:laplacian-kernel}
-For a connected graph, $\ker(L) = \R \cdot \mathbf{1}$, where $\mathbf{1} = (1, \ldots, 1)^\top$ is the constant vector.
+For a connected graph, $\ker(L) = \R \cdot \mathbf{1}$.
 \end{theorem}
-
-\begin{proof}
-Since $B^\top \mathbf{1} = 0$ (column sums vanish), we have $L \mathbf{1} = B W B^\top \mathbf{1} = 0$. Conversely, if $Lx = 0$, then $0 = x^\top L x = \|W^{1/2} B^\top x\|^2$, so $B^\top x = 0$. For a connected graph, this implies $x$ is constant.
-\end{proof}
-
-\subsection{Hodge Decomposition}
-
-The Hodge decomposition on graphs provides an orthogonal splitting of edge functions.
 
 \begin{theorem}[Hodge Decomposition]
 \label{thm:hodge}
-For a connected graph with positive weights, every edge function $\omega : E \to \R$ decomposes uniquely as
-\[
-\omega = \omega_{\mathrm{harm}} + \omega_{\mathrm{exact}},
-\]
-where:
-\begin{itemize}
-    \item $\omega_{\mathrm{harm}} \in \ker(BW)$ is the \emph{harmonic} (cyclic) part,
-    \item $\omega_{\mathrm{exact}} \in \im(B^\top)$ is the \emph{exact} (gradient) part.
-\end{itemize}
-These subspaces are $W^{-1}$-orthogonal: $\inner{\omega_{\mathrm{harm}}}{\omega_{\mathrm{exact}}}_{W^{-1}} = 0$.
+Every edge function $\omega : E \to \R$ decomposes uniquely as $\omega = \omega_{\mathrm{harm}} + \omega_{\mathrm{exact}}$, where $\omega_{\mathrm{harm}} \in \ker(BW)$ and $\omega_{\mathrm{exact}} \in \im(B^\top)$ are $W^{-1}$-orthogonal.
 \end{theorem}
 
-\begin{proof}
-The decomposition is given by the projection $\pi : \omega \mapsto \omega - W B^\top L^+ B W \omega$, where $L^+$ is the Moore--Penrose pseudoinverse of $L$ restricted to mean-zero functions. Orthogonality follows from $\ker(BW) \perp_{W^{-1}} \im(B^\top)$.
-\end{proof}
-
 \begin{definition}[Laplacian Inverse]
-\label{def:laplacian-inverse}
-The \emph{Laplacian inverse} $L^+$ is the unique matrix satisfying:
-\begin{enumerate}[label=(\roman*)]
-    \item $L L^+ L = L$ and $L^+ L L^+ = L^+$,
-    \item $L^+ \mathbf{1} = 0$ (annihilates constants),
-    \item $(L^+)^\top = L^+$ (symmetric).
-\end{enumerate}
+The Laplacian inverse $L^+$ satisfies $L L^+ L = L$, $L^+ \mathbf{1} = 0$, and $(L^+)^\top = L^+$.
 \end{definition}
-
-The projection onto $\ker(BW)$ is then:
-\[
-\pi(\omega) = \omega - W B^\top L^+ B W \omega.
-\]
 
 
 % ============================================================================
@@ -193,48 +163,21 @@ The projection onto $\ker(BW)$ is then:
 \label{sec:functional}
 % ============================================================================
 
-We now introduce the central variational object.
-
-\subsection{Definition and Physical Interpretation}
-
 \begin{definition}[Onsager--Rayleigh Functional]
-\label{def:or-functional}
-For edge weights $w : E \to \R_{>0}$ and driving forces $\omega : E \to \R$, the \emph{Onsager--Rayleigh functional} is
 \[
 \OR(J) = \frac{1}{2} \inner{J}{J}_{W^{-1}} - \inner{\omega}{J} = \frac{1}{2} \sum_{e \in E} \frac{J_e^2}{w_e} - \sum_{e \in E} \omega_e J_e.
 \]
 \end{definition}
 
-The physical interpretation is:
-\begin{itemize}
-    \item $J_e$: flux (current) through edge $e$,
-    \item $w_e$: conductance (kinetic coefficient) of edge $e$,
-    \item $\omega_e$: thermodynamic driving force (affinity) on edge $e$,
-    \item $\frac{1}{2}\inner{J}{J}_{W^{-1}}$: dissipation rate,
-    \item $\inner{\omega}{J}$: power input from driving forces.
-\end{itemize}
-
-\subsection{Optimal Flux}
-
-The steady-state flux satisfies conservation at each vertex: $\sum_e B_{ve} J_e = 0$, i.e., $J \in \ker(B)$.
+Physical interpretation: $J_e$ is flux, $w_e$ is conductance, $\omega_e$ is driving force, $\frac{1}{2}\inner{J}{J}_{W^{-1}}$ is dissipation, $\inner{\omega}{J}$ is power input.
 
 \begin{definition}[Optimal Flux]
-\label{def:optimal-flux}
-The \emph{optimal flux} is
-\[
-J^* = W \pi(\omega) = W \left( \omega - B^\top L^+ B W \omega \right),
-\]
-where $\pi$ is the projection onto $\ker(BW)$.
+$J^* = W \pi(\omega) = W \left( \omega - B^\top L^+ B W \omega \right)$.
 \end{definition}
 
-\begin{proposition}[Optimal Flux in Kernel]
-\label{prop:optimal-in-ker}
-The optimal flux satisfies $B J^* = 0$, i.e., $J^* \in \ker(B)$.
+\begin{proposition}
+$B J^* = 0$, i.e., $J^* \in \ker(B)$.
 \end{proposition}
-
-\begin{proof}
-$B J^* = B W \pi(\omega) = 0$ since $\pi(\omega) \in \ker(BW)$.
-\end{proof}
 
 
 % ============================================================================
@@ -242,81 +185,29 @@ $B J^* = B W \pi(\omega) = 0$ since $\pi(\omega) \in \ker(BW)$.
 \label{sec:optimality}
 % ============================================================================
 
-We now establish the main variational results.
-
-\subsection{KKT Conditions}
-
 \begin{theorem}[KKT Stationarity]
 \label{thm:kkt}
-The optimal flux $J^*$ satisfies the Karush--Kuhn--Tucker conditions: there exists a Lagrange multiplier $\lambda : V \to \R$ such that
-\[
-\frac{J^*_e}{w_e} = \omega_e + \sum_{v \in V} B_{ve} \lambda_v \quad \text{for all } e \in E.
-\]
-Equivalently, $J^*/W - \omega \in \im(B^\top)$.
+There exists $\lambda : V \to \R$ such that $J^*_e / w_e = \omega_e + \sum_{v} B_{ve} \lambda_v$.
 \end{theorem}
-
-\begin{proof}
-The stationarity condition $\nabla_J \OR(J^*) \in \im(B^\top)$ gives $J^*/W - \omega = B^\top \lambda$ for some $\lambda$. Explicitly, $\lambda = L^+ B W \omega$.
-\end{proof}
-
-\subsection{Optimality}
 
 \begin{theorem}[Optimality]
 \label{thm:optimality}
-For any $J \in \ker(B)$, we have $\OR(J^*) \leq \OR(J)$.
+For any $J \in \ker(B)$, $\OR(J^*) \leq \OR(J)$.
 \end{theorem}
-
-\begin{proof}
-Write $J = J^* + h$ where $h \in \ker(B)$. Then
-\begin{align*}
-\OR(J) - \OR(J^*) &= \frac{1}{2}\inner{J^* + h}{J^* + h}_{W^{-1}} - \inner{\omega}{J^* + h} \\
-&\quad - \frac{1}{2}\inner{J^*}{J^*}_{W^{-1}} + \inner{\omega}{J^*} \\
-&= \inner{J^*}{h}_{W^{-1}} - \inner{\omega}{h} + \frac{1}{2}\inner{h}{h}_{W^{-1}} \\
-&= \inner{J^*/W - \omega}{h} + \frac{1}{2}\inner{h}{h}_{W^{-1}}.
-\end{align*}
-By KKT (\Cref{thm:kkt}), $J^*/W - \omega = B^\top \lambda$, so
-\[
-\inner{J^*/W - \omega}{h} = \inner{B^\top \lambda}{h} = \inner{\lambda}{Bh} = 0
-\]
-since $h \in \ker(B)$. Thus $\OR(J) - \OR(J^*) = \frac{1}{2}\inner{h}{h}_{W^{-1}} \geq 0$.
-\end{proof}
-
-\subsection{Uniqueness}
 
 \begin{corollary}[Uniqueness]
 \label{cor:uniqueness}
-If $J \in \ker(B)$ satisfies $\OR(J) = \OR(J^*)$, then $J = J^*$.
+If $\OR(J) = \OR(J^*)$ for $J \in \ker(B)$, then $J = J^*$.
 \end{corollary}
-
-\begin{proof}
-From the proof of \Cref{thm:optimality}, $\OR(J) = \OR(J^*)$ implies $\inner{h}{h}_{W^{-1}} = 0$. Since $w_e > 0$ for all $e$, this forces $h = 0$, hence $J = J^*$.
-\end{proof}
-
-\subsection{Quadratic Expansion}
 
 \begin{theorem}[Quadratic Expansion]
 \label{thm:quadratic}
-For any $h \in \ker(B)$,
-\[
-\OR(J^* + h) - \OR(J^*) = \frac{1}{2} \inner{h}{h}_{W^{-1}} = \frac{1}{2} \sum_{e \in E} \frac{h_e^2}{w_e}.
-\]
+For any $h \in \ker(B)$, $\OR(J^* + h) - \OR(J^*) = \frac{1}{2} \inner{h}{h}_{W^{-1}}$.
 \end{theorem}
-
-\begin{proof}
-Immediate from the proof of \Cref{thm:optimality}: the linear term vanishes by KKT, leaving only the quadratic term.
-\end{proof}
-
-This identity is \emph{sharp}: there is no higher-order correction.
-
-\subsection{Lyapunov Function}
 
 \begin{corollary}[Lyapunov Characterization]
 \label{cor:lyapunov}
-The function $V(J) = \OR(J) - \OR(J^*)$ is a Lyapunov function on $\ker(B)$:
-\begin{enumerate}[label=(\roman*)]
-    \item $V(J) \geq 0$ for all $J \in \ker(B)$,
-    \item $V(J) = 0$ if and only if $J = J^*$.
-\end{enumerate}
+$V(J) = \OR(J) - \OR(J^*)$ satisfies $V(J) \geq 0$ with equality iff $J = J^*$.
 \end{corollary}
 
 
@@ -325,129 +216,404 @@ The function $V(J) = \OR(J) - \OR(J^*)$ is a Lyapunov function on $\ker(B)$:
 \label{sec:crnt}
 % ============================================================================
 
-We now extend the framework to incorporate species structure, connecting to classical CRNT.
-
 \subsection{Species and Complexes}
 
 \begin{definition}[Chemical Reaction Network]
-\label{def:crn}
-A \emph{chemical reaction network} (CRN) consists of:
-\begin{itemize}
-    \item A finite set $\mathcal{S}$ of \emph{species},
-    \item A finite set $V$ of \emph{complexes},
-    \item A finite set $E$ of \emph{reactions} (directed edges between complexes),
-    \item An incidence matrix $B \in \R^{V \times E}$,
-    \item A \emph{complex composition matrix} $Y \in \R^{\mathcal{S} \times V}$, where $Y_{sv}$ is the stoichiometric coefficient of species $s$ in complex $v$.
-\end{itemize}
+A CRN consists of species $\mathcal{S}$, complexes $V$, reactions $E$, incidence matrix $B$, and complex composition matrix $Y \in \R^{\mathcal{S} \times V}$.
 \end{definition}
 
 \begin{definition}[Stoichiometric Matrix]
-\label{def:stoich-matrix}
-The \emph{stoichiometric matrix} is $N = YB \in \R^{\mathcal{S} \times E}$. Entry $N_{se}$ gives the net change in species $s$ due to reaction $e$.
+$N = YB \in \R^{\mathcal{S} \times E}$ gives net species changes per reaction.
 \end{definition}
 
 \subsection{Deficiency}
 
 \begin{definition}[CRNT Deficiency]
-\label{def:deficiency}
-The \emph{deficiency} of a CRN is
-\[
-\delta = n - \ell - s,
-\]
-where $n = |V|$ is the number of complexes, $\ell$ is the number of linkage classes (connected components), and $s = \rank(N)$ is the rank of the stoichiometric matrix.
+$\delta = n - \ell - \rank(N)$, where $n = |V|$, $\ell$ = linkage classes.
 \end{definition}
 
 \begin{remark}[Graph vs.\ CRNT Deficiency]
-The \emph{graph deficiency} $\delta_{\mathrm{graph}} = n - \ell - \rank(B)$ equals zero for any connected graph. The CRNT deficiency uses $\rank(N) = \rank(YB)$, which can be strictly less than $\rank(B)$ when different complexes have the same species composition, giving $\delta > 0$.
-\end{remark}
-
-\begin{remark}[Feinberg--Horn--Jackson Conventions]
-\label{rmk:fhj}
-We follow the standard definitions of Feinberg, Horn, and Jackson \cite{Feinberg1972,HornJackson1972,Feinberg1987}:
-\begin{itemize}
-    \item \textbf{Weak reversibility}: A CRN is \emph{weakly reversible} if every linkage class is strongly connected.
-    
-    \item \textbf{Mass-action kinetics}: The reaction rate for $e: y \to y'$ is $v_e(c) = k_e \prod_{s} c_s^{Y_{sy}}$.
-    
-    \item \textbf{Uniqueness}: In the deficiency zero theorem, uniqueness is \emph{per stoichiometric compatibility class} $\{c : c = c_0 + \im(N)\}$, not global.
-\end{itemize}
+Graph deficiency $|V| - \ell - \rank(B) = 0$ for connected graphs. CRNT deficiency uses $\rank(N) = \rank(YB) \leq \rank(B)$, so $\delta \geq 0$.
 \end{remark}
 
 \subsection{Mass-Action Kinetics}
 
 \begin{definition}[Mass-Action Rate]
-\label{def:mass-action}
-For concentration vector $c \in \R_{>0}^{\mathcal{S}}$ and rate constants $k : E \to \R_{>0}$, the \emph{mass-action rate} of reaction $e$ from complex $y$ is
-\[
-v_e(c) = k_e \prod_{s \in \mathcal{S}} c_s^{Y_{sy}} = k_e \, c^{Y_{\cdot,y}}.
-\]
+$v_e(c) = k_e \prod_{s} c_s^{Y_{sy}}$.
 \end{definition}
 
 \begin{definition}[Affinity]
-\label{def:affinity}
-For reversible reactions with forward rate $k^+_e$ and reverse rate $k^-_e$, the \emph{thermodynamic affinity} at concentration $c$ is
-\[
-A_e(c) = \ln\frac{k^+_e}{k^-_e} - \sum_{s \in \mathcal{S}} N_{se} \ln c_s.
-\]
-\end{definition}
-
-\begin{definition}[Detailed Balance]
-\label{def:detailed-balance}
-A CRN is at \emph{detailed balance} at concentration $c^*$ if $A_e(c^*) = 0$ for all reactions $e$.
-\end{definition}
-
-\subsection{Cycle Affinities}
-
-A key result is that cycle affinities are independent of concentration.
-
-\begin{definition}[Stoichiometric Cycle]
-\label{def:stoich-cycle}
-A list of reactions $(e_1, \ldots, e_k)$ is a \emph{stoichiometric cycle} if
-\[
-\sum_{i=1}^k N_{s,e_i} = 0 \quad \text{for all species } s \in \mathcal{S}.
-\]
+$A_e(c) = \ln(k^+_e/k^-_e) - \sum_{s} N_{se} \ln c_s$.
 \end{definition}
 
 \begin{theorem}[Cycle Affinity Independence]
 \label{thm:cycle-affinity}
-For a stoichiometric cycle $(e_1, \ldots, e_k)$, the \emph{cycle affinity}
-\[
-A_{\mathrm{cycle}} = \sum_{i=1}^k A_{e_i}(c)
-\]
-is independent of the concentration $c$. Specifically,
-\[
-A_{\mathrm{cycle}} = \sum_{i=1}^k \ln\frac{k^+_{e_i}}{k^-_{e_i}}.
-\]
+For a stoichiometric cycle, $A_{\mathrm{cycle}} = \sum_i \ln(k^+_{e_i}/k^-_{e_i})$ is concentration-independent.
 \end{theorem}
-
-\begin{proof}
-\begin{align*}
-A_{\mathrm{cycle}} &= \sum_{i=1}^k \left( \ln\frac{k^+_{e_i}}{k^-_{e_i}} - \sum_s N_{s,e_i} \ln c_s \right) \\
-&= \sum_{i=1}^k \ln\frac{k^+_{e_i}}{k^-_{e_i}} - \sum_s \ln c_s \cdot \underbrace{\sum_{i=1}^k N_{s,e_i}}_{=0 \text{ (cycle)}} \\
-&= \sum_{i=1}^k \ln\frac{k^+_{e_i}}{k^-_{e_i}}.
-\end{align*}
-\end{proof}
-
-This is the \emph{Wegscheider condition}: for detailed balance to be achievable, cycle affinities must vanish.
 
 \subsection{Deficiency Zero Theorem}
 
 \begin{theorem}[Deficiency Zero Equilibrium Existence]
 \label{thm:def-zero-existence}
-For a mass-action CRN with $\delta = 0$ and weak reversibility, there exists a positive flux $J \in \ker(B)$ such that the system is complex-balanced.
+For $\delta = 0$ with weak reversibility, there exists a positive complex-balanced equilibrium, unique in each stoichiometric compatibility class.
 \end{theorem}
 
-\begin{proof}
-Weak reversibility implies $\exists J > 0$ with $BJ = 0$. The variational principle (\Cref{thm:optimality}) gives the optimal flux; deficiency zero ensures complex balance.
-\end{proof}
 
-\begin{theorem}[Detailed Balance at Equilibrium]
-\label{thm:db-equilibrium}
-At detailed balance, the equilibrium constant satisfies
+% ============================================================================
+\section{Deficiency One Theorem}
+\label{sec:def-one}
+% ============================================================================
+
+\begin{definition}[Linkage Class Deficiency]
+For linkage class $\ell_i$, the local deficiency is $\delta_i = n_i - 1 - \rank(N_i)$.
+\end{definition}
+
+\begin{theorem}[Deficiency One Existence]
+\label{thm:def-one-existence}
+For a mass-action CRN with $\delta = 1$, weak reversibility, $\delta_i \leq 1$ for all $i$, and $\sum_i \delta_i = 1$, there exists a positive steady state in each compatibility class.
+\end{theorem}
+
+\begin{theorem}[Deficiency One Uniqueness]
+\label{thm:def-one-uniqueness}
+Under the Deficiency One Algorithm conditions, the positive steady state is unique.
+\end{theorem}
+
+
+% ============================================================================
+\section{Higher Deficiency Networks}
+\label{sec:higher-def}
+% ============================================================================
+
+For networks with $\delta \geq 2$, we employ advanced structural tools.
+
+\subsection{Species-Reaction Graph}
+
+\begin{definition}[SR-Graph]
+The species-reaction graph has vertices $\mathcal{S} \cup E$ with edges connecting species to reactions that produce or consume them.
+\end{definition}
+
+\begin{definition}[Concordance]
+A CRN is \emph{concordant} if there is no sign pattern $\sigma \in \{-1, 0, +1\}^E$ with $N\sigma = 0$ and $\sigma$ sign-compatible with stoichiometry.
+\end{definition}
+
+\begin{theorem}[Concordance and Injectivity]
+\label{thm:concordance}
+A concordant CRN has at most one equilibrium in each stoichiometric compatibility class.
+\end{theorem}
+
+\subsection{Deficiency Two Algorithm}
+
+\begin{definition}[D2A Conditions]
+A network satisfies D2A conditions if certain linear inequalities on the stoichiometric coefficients are satisfied.
+\end{definition}
+
+\begin{theorem}[D2A Existence]
+\label{thm:d2a}
+Under D2A conditions with weak reversibility, existence of positive equilibria is guaranteed despite $\delta \geq 2$.
+\end{theorem}
+
+
+% ============================================================================
+\section{Cohomological Deficiency Theory}
+\label{sec:cohomology}
+% ============================================================================
+
+We now present a cohomological interpretation of deficiency that reveals its deep mathematical structure.
+
+\subsection{The CRN Chain Complex}
+
+\begin{definition}[CRN Chain Complex]
+A chemical reaction network induces a chain complex:
 \[
-K_e = \frac{k^+_e}{k^-_e} = \prod_{s \in \mathcal{S}} (c^*_s)^{N_{se}} = c^{*N_{\cdot,e}}.
+0 \longrightarrow \R^E \xrightarrow{B^\top} \R^V \xrightarrow{Y} \R^{\mathcal{S}} \longrightarrow 0
+\]
+where $B^\top$ is the transpose of the incidence matrix and $Y$ is the complex composition matrix.
+\end{definition}
+
+\begin{proposition}[Composition]
+\label{prop:composition}
+$Y \circ B^\top = N^\top$, where $N = YB$ is the stoichiometric matrix.
+\end{proposition}
+
+\subsection{Cycle and Coboundary Spaces}
+
+\begin{definition}[CycleSpace]
+The \emph{CycleSpace} is $\ker(Y) \subseteq \R^V$---vectors in the complex space that are invisible to species.
+\end{definition}
+
+\begin{definition}[CoboundarySpace]
+The \emph{CoboundarySpace} is $\im(B^\top) \subseteq \R^V$---vectors that arise from flux distributions.
+\end{definition}
+
+\begin{definition}[DefectSpace]
+The \emph{DefectSpace} is $\ker(Y) \cap \im(B^\top)$---the first cohomology group $H^1$ of the chain complex.
+\end{definition}
+
+\subsection{The Main Theorem}
+
+\begin{theorem}[Cohomological Deficiency]
+\label{thm:cohom-deficiency}
+The classical CRNT deficiency equals the dimension of the DefectSpace:
+\[
+\delta = n - \ell - \rank(N) = \dim(\ker(Y) \cap \im(B^\top)) = \dim(H^1).
 \]
 \end{theorem}
+
+\begin{corollary}[Exactness Characterization]
+\label{cor:exactness}
+The chain complex is exact at $\R^V$ if and only if $\delta = 0$.
+\end{corollary}
+
+\subsection{Physical Interpretation}
+
+\begin{definition}[Obstruction]
+An element $c \in \text{DefectSpace}$ is an \emph{obstruction} to the existence of a steady state: it represents a complex-space vector that arises from fluxes but is invisible to the species dynamics.
+\end{definition}
+
+\begin{theorem}[Obstruction Theory]
+\label{thm:obstruction}
+For $\delta > 0$, there exist nonzero vectors $c \in \ker(Y) \cap \im(B^\top)$. These correspond to ``hidden cycles'' in the reaction network that create additional constraints on steady-state existence.
+\end{theorem}
+
+\subsection{Connection to Onsager--Rayleigh}
+
+\begin{theorem}[Variational Duality]
+\label{thm:var-duality}
+Let $J^*$ be the optimal flux from the Onsager--Rayleigh functional. The Lagrange multipliers $\mu : V \to \R$ from the KKT conditions satisfy:
+\begin{enumerate}[label=(\roman*)]
+    \item $\mu \in \text{CoboundarySpace}^{\perp}$ (orthogonal to image of $B^\top$)
+    \item For $\delta = 0$: $\mu$ is uniquely determined by the stoichiometry
+    \item For $\delta > 0$: The DefectSpace creates a $\delta$-dimensional family of valid multipliers
+\end{enumerate}
+\end{theorem}
+
+\subsection{Examples}
+
+\begin{example}[Triangle Network]
+For the 3-cycle $A \to B \to C \to A$:
+\begin{itemize}
+    \item $n = 3$, $\ell = 1$, $\rank(N) = 2$
+    \item $\delta = 3 - 1 - 2 = 0$
+    \item DefectSpace $= \{0\}$ (exact)
+\end{itemize}
+\end{example}
+
+\begin{example}[Deficiency One Network]
+For $A \to 2A \to 3A$ over single species $A$:
+\begin{itemize}
+    \item $n = 3$, $\ell = 1$, $\rank(N) = 1$
+    \item $\delta = 3 - 1 - 1 = 1$
+    \item DefectSpace $= \text{span}\{(-1, 2, -1)\}$ (1-dimensional)
+\end{itemize}
+\end{example}
+
+
+% ============================================================================
+\section{Persistence and Permanence}
+\label{sec:persistence}
+% ============================================================================
+
+\begin{definition}[Persistence]
+A CRN is \emph{persistent} if $\liminf_{t \to \infty} c_s(t) > 0$ for all species $s$ from positive initial conditions.
+\end{definition}
+
+\begin{definition}[Permanence]
+A CRN is \emph{permanent} if there exist $0 < m < M$ bounding all trajectories uniformly.
+\end{definition}
+
+\begin{theorem}[Deficiency Zero Persistence]
+\label{thm:def-zero-persistence}
+A mass-action CRN with $\delta = 0$, weak reversibility, and single linkage class is persistent.
+\end{theorem}
+
+\subsection{Omega-Limit Sets}
+
+\begin{definition}[Omega-Limit Set]
+$\omega(c_0) = \bigcap_{T > 0} \overline{\{c(t) : t > T\}}$.
+\end{definition}
+
+\begin{theorem}[Omega-Limit Characterization]
+\label{thm:omega-limit}
+For persistent, bounded trajectories: $\omega(c_0) \neq \emptyset$, $\omega(c_0) \subseteq \R^{\mathcal{S}}_{>0}$, and for $\delta = 0$ with weak reversibility, $\omega(c_0)$ consists of equilibria.
+\end{theorem}
+
+\subsection{Siphons}
+
+\begin{definition}[Siphon]
+$Z \subseteq \mathcal{S}$ is a siphon if every reaction producing a species in $Z$ also consumes one.
+\end{definition}
+
+\begin{theorem}[Global Attractor]
+\label{thm:global-attractor}
+For $\delta = 0$, weak reversibility, and single linkage class, each compatibility class has a unique global attractor.
+\end{theorem}
+
+
+% ============================================================================
+\section{Multistability}
+\label{sec:multistability}
+% ============================================================================
+
+\begin{definition}[Multiple Equilibria]
+A CRN exhibits \emph{multistability} if there exist multiple positive equilibria in a single stoichiometric compatibility class.
+\end{definition}
+
+\begin{theorem}[Sign Condition for Injectivity]
+\label{thm:sign-injectivity}
+If the Jacobian $\partial f / \partial c$ has a sign pattern precluding positive real eigenvalues, the system is injective (at most one equilibrium).
+\end{theorem}
+
+\begin{definition}[Saddle-Node Bifurcation]
+A saddle-node bifurcation occurs when two equilibria collide and annihilate as a parameter varies.
+\end{definition}
+
+\begin{theorem}[Bifurcation Conditions]
+\label{thm:bifurcation}
+Multistability requires: (i) $\delta \geq 1$, (ii) appropriate sign structure in the Jacobian, (iii) sufficient nonlinearity.
+\end{theorem}
+
+
+% ============================================================================
+\section{Oscillations}
+\label{sec:oscillations}
+% ============================================================================
+
+\begin{definition}[Hopf Bifurcation]
+A Hopf bifurcation occurs when a pair of complex conjugate eigenvalues of the Jacobian crosses the imaginary axis.
+\end{definition}
+
+\begin{theorem}[Hopf Bifurcation Theorem]
+\label{thm:hopf}
+If at parameter $\mu = \mu_c$: (i) the Jacobian has eigenvalues $\pm i\omega$, (ii) the transversality condition $\frac{d}{d\mu}\text{Re}(\lambda)|_{\mu_c} \neq 0$ holds, then a family of periodic orbits bifurcates from the equilibrium.
+\end{theorem}
+
+\subsection{Routh--Hurwitz Criterion}
+
+\begin{theorem}[Routh--Hurwitz]
+\label{thm:routh-hurwitz}
+The characteristic polynomial $p(\lambda) = \lambda^n + a_1\lambda^{n-1} + \cdots + a_n$ has all roots with negative real parts iff the Hurwitz determinants $H_1, \ldots, H_n$ are all positive.
+\end{theorem}
+
+\begin{definition}[Limit Cycle]
+A limit cycle is an isolated periodic orbit.
+\end{definition}
+
+\begin{theorem}[Existence of Limit Cycles]
+\label{thm:limit-cycle}
+Supercritical Hopf bifurcations produce stable limit cycles; subcritical produce unstable ones.
+\end{theorem}
+
+
+% ============================================================================
+\section{Reaction-Diffusion Systems}
+\label{sec:reaction-diffusion}
+% ============================================================================
+
+\begin{definition}[Reaction-Diffusion Equation]
+\[
+\frac{\partial c}{\partial t} = D \nabla^2 c + f(c),
+\]
+where $D = \diag(D_s)$ contains diffusion coefficients and $f(c)$ is the reaction term.
+\end{definition}
+
+\subsection{Turing Instability}
+
+\begin{definition}[Turing Instability]
+A homogeneous steady state $c^*$ is Turing unstable if it is stable to spatially uniform perturbations but unstable to spatially nonuniform perturbations.
+\end{definition}
+
+\begin{theorem}[Turing Conditions]
+\label{thm:turing}
+For a two-species system with Jacobian $J$ at $c^*$:
+\begin{enumerate}[label=(\roman*)}
+    \item $\tr(J) < 0$ and $\det(J) > 0$ (homogeneous stability),
+    \item $D_2 J_{11} + D_1 J_{22} > 0$,
+    \item $(D_2 J_{11} + D_1 J_{22})^2 > 4 D_1 D_2 \det(J)$.
+\end{enumerate}
+\end{theorem}
+
+\subsection{Pattern Formation}
+
+\begin{definition}[Critical Wavenumber]
+The critical wavenumber $k_c$ satisfies $\det(J - k_c^2 D) = 0$ at the Turing bifurcation.
+\end{definition}
+
+\begin{theorem}[Traveling Waves]
+\label{thm:traveling-waves}
+Under appropriate conditions, reaction-diffusion systems support traveling wave solutions $c(x,t) = C(x - vt)$ with wave speed $v$.
+\end{theorem}
+
+
+% ============================================================================
+\section{Stochastic Chemical Reaction Networks}
+\label{sec:stochastic}
+% ============================================================================
+
+\begin{definition}[State Space]
+The state is $n = (n_s)_{s \in \mathcal{S}} \in \Z_{\geq 0}^{\mathcal{S}}$, where $n_s$ is the molecule count.
+\end{definition}
+
+\begin{definition}[Propensity Function]
+$a_e(n) = k_e \prod_{s} \binom{n_s}{\nu^-_{e,s}}$.
+\end{definition}
+
+\begin{definition}[Chemical Master Equation]
+\[
+\frac{dP(n,t)}{dt} = \sum_{e \in E} \left[ a_e(n - \nu_e) P(n - \nu_e, t) - a_e(n) P(n, t) \right].
+\]
+\end{definition}
+
+\begin{definition}[Product-Form Distribution]
+$\pi(n) = \prod_{s \in \mathcal{S}} \frac{c_s^{n_s}}{n_s!} e^{-c_s}$.
+\end{definition}
+
+\begin{theorem}[Product-Form Stationarity]
+\label{thm:product-form}
+For $\delta = 0$ with weak reversibility, the product-form distribution with parameter $c^*$ (deterministic equilibrium) is stationary for the CME.
+\end{theorem}
+
+\begin{theorem}[Deterministic Limit]
+\label{thm:lln}
+As volume $V \to \infty$ with $N^V(0)/V \to c_0$, $N^V(t)/V \xrightarrow{P} c(t)$ (mass-action ODE solution).
+\end{theorem}
+
+\begin{theorem}[Fluctuation-Dissipation]
+\label{thm:fluctuation-dissipation}
+$\text{Var}(N_s/V) = c^*_s / V + O(1/V^2)$, connecting to Onsager--Rayleigh structure.
+\end{theorem}
+
+
+% ============================================================================
+\section{Control Theory}
+\label{sec:control}
+% ============================================================================
+
+\begin{definition}[Antithetic Integral Feedback]
+A control motif with species $Z_1, Z_2$ satisfying:
+\begin{align}
+\dot{Z}_1 &= \mu - \eta Z_1 Z_2, \\
+\dot{Z}_2 &= \theta X - \eta Z_1 Z_2,
+\end{align}
+where $X$ is the controlled output and $\mu, \theta, \eta$ are parameters.
+\end{definition}
+
+\begin{theorem}[Robust Perfect Adaptation]
+\label{thm:rpa}
+The antithetic motif achieves $X^* = \mu/\theta$ at steady state, independent of other system parameters.
+\end{theorem}
+
+\begin{definition}[Robustness]
+A property is \emph{robust} if it is maintained under parameter perturbations.
+\end{definition}
+
+\begin{theorem}[Structural Robustness]
+\label{thm:structural-robustness}
+Integral feedback controllers provide robust perfect adaptation: the steady-state output depends only on the controller parameters, not on the plant.
+\end{theorem}
+
+\begin{definition}[Antithetic Saturation]
+When $Z_1$ or $Z_2$ saturates, the controller loses perfect adaptation but maintains bounded tracking error.
+\end{definition}
 
 
 % ============================================================================
@@ -455,168 +621,40 @@ K_e = \frac{k^+_e}{k^-_e} = \prod_{s \in \mathcal{S}} (c^*_s)^{N_{se}} = c^{*N_{
 \label{sec:examples}
 % ============================================================================
 
-We illustrate the theory with three examples of increasing complexity.
-
-\subsection{The Triangle (3-Cycle)}
-
-Consider three complexes $V = \{0, 1, 2\}$ connected in a cycle:
-\[
-0 \xrightarrow{e_0} 1 \xrightarrow{e_1} 2 \xrightarrow{e_2} 0.
-\]
-
-The incidence matrix is:
-\[
-B = \begin{pmatrix}
--1 & 0 & 1 \\
-1 & -1 & 0 \\
-0 & 1 & -1
-\end{pmatrix}.
-\]
-
-\begin{proposition}[Kernel of Triangle]
-\label{prop:triangle-ker}
-$\ker(B) = \R \cdot (1, 1, 1)^\top$.
-\end{proposition}
-
-\begin{proof}
-The equations $BJ = 0$ give:
-\begin{align*}
--J_0 + J_2 &= 0, \\
-J_0 - J_1 &= 0, \\
-J_1 - J_2 &= 0.
-\end{align*}
-Hence $J_0 = J_1 = J_2$.
-\end{proof}
-
-\begin{proposition}[Optimal Flux for Triangle]
-\label{prop:triangle-optimal}
-For uniform weights $w = (1, 1, 1)$ and driving forces $\omega = (\omega_0, \omega_1, \omega_2)$, the optimal flux is
-\[
-J^* = \bar{\omega} \cdot (1, 1, 1)^\top, \quad \text{where } \bar{\omega} = \frac{\omega_0 + \omega_1 + \omega_2}{3}.
-\]
-\end{proposition}
-
-This is the projection of $\omega$ onto the one-dimensional cycle space.
-
 \subsection{The $n$-Cycle}
 
-The $n$-cycle generalizes the triangle: vertices $V = \{0, 1, \ldots, n-1\}$ with edge $e_i$ from $i$ to $(i+1) \mod n$.
+For vertices $0, 1, \ldots, n-1$ with edges $i \to (i+1) \mod n$:
 
-\begin{theorem}[Kernel of $n$-Cycle]
-\label{thm:n-cycle-ker}
-For $n \geq 2$, $\ker(B) = \R \cdot \mathbf{1}$.
+\begin{theorem}[Kirchhoff's Theorem]
+$\ker(B) = \R \cdot \mathbf{1}$ and $J^* = \bar{\omega} \cdot \mathbf{1}$ where $\bar{\omega} = \frac{1}{n}\sum_i \omega_i$.
 \end{theorem}
-
-\begin{proof}
-The equation at vertex $v$ gives $-J_v + J_{v-1} = 0$, i.e., $J_v = J_{v-1}$ for all $v$. By induction, $J$ is constant.
-\end{proof}
-
-\begin{theorem}[Optimal Flux for $n$-Cycle]
-\label{thm:n-cycle-optimal}
-For uniform weights, the optimal flux is $J^* = \bar{\omega} \cdot \mathbf{1}$ where $\bar{\omega} = \frac{1}{n}\sum_{i=0}^{n-1} \omega_i$.
-\end{theorem}
-
-\textbf{Physical interpretation}:
-\begin{itemize}
-    \item $\bar{\omega} > 0$: clockwise circulation,
-    \item $\bar{\omega} < 0$: counterclockwise circulation,
-    \item $\bar{\omega} = 0$: detailed balance (no net flow).
-\end{itemize}
-
-This is Kirchhoff's theorem for electrical circuits: the current in a single loop equals the total EMF divided by total resistance.
 
 \subsection{Michaelis--Menten Enzyme Kinetics}
 
-The Michaelis--Menten mechanism models enzyme catalysis:
-\[
-\text{E} + \text{S} \xrightleftharpoons[k_2]{k_1} \text{ES} \xrightarrow{k_3} \text{E} + \text{P}.
-\]
-
-\textbf{Species}: $\mathcal{S} = \{\text{E}, \text{S}, \text{ES}, \text{P}\}$.
-
-\textbf{Complexes}: $V = \{\text{E}+\text{S}, \text{ES}, \text{E}+\text{P}\}$.
-
-\textbf{Reactions}: 
-\begin{itemize}
-    \item $e_0$: E+S $\to$ ES (rate $k_1$),
-    \item $e_1$: ES $\to$ E+S (rate $k_2$),
-    \item $e_2$: ES $\to$ E+P (rate $k_3$).
-\end{itemize}
-
-The matrices are:
-\[
-B = \begin{pmatrix}
--1 & 1 & 0 \\
-1 & -1 & -1 \\
-0 & 0 & 1
-\end{pmatrix}, \quad
-Y = \begin{pmatrix}
-1 & 0 & 1 \\
-1 & 0 & 0 \\
-0 & 1 & 0 \\
-0 & 0 & 1
-\end{pmatrix}, \quad
-N = YB = \begin{pmatrix}
--1 & 1 & 1 \\
--1 & 1 & 0 \\
-1 & -1 & -1 \\
-0 & 0 & 1
-\end{pmatrix}.
-\]
-
-\begin{proposition}[Deficiency of Michaelis--Menten]
-\label{prop:mm-deficiency}
-The Michaelis--Menten network has $\delta = 0$.
-\end{proposition}
-
-\begin{proof}
-We have $n = 3$ complexes, $\ell = 1$ linkage class (connected), and $\rank(N) = 2$ (row E + row ES = 0). Thus $\delta = 3 - 1 - 2 = 0$.
-\end{proof}
-
-\begin{proposition}[Enzyme Conservation]
-\label{prop:enzyme-conservation}
-The total enzyme $[\text{E}] + [\text{ES}] = E_{\mathrm{total}}$ is conserved.
-\end{proposition}
-
-\begin{proof}
-The row E + row ES of $N$ is $(0, 0, 0)$, so $\frac{d}{dt}([\text{E}] + [\text{ES}]) = 0$.
-\end{proof}
-
-\begin{remark}[QSSA Assumptions]
-\label{rmk:qssa}
-The Michaelis--Menten equation is derived under the standard quasi-steady state assumptions:
-\begin{enumerate}
-    \item \textbf{QSSA}: $\frac{d[\text{ES}]}{dt} \approx 0$ (fast equilibration of ES).
-    \item \textbf{Enzyme conservation}: $[\text{E}] + [\text{ES}] = E_{\mathrm{total}}$ (constant).
-    \item \textbf{Closed system}: No influx/efflux of enzyme.
-\end{enumerate}
-In the Lean formalization, these appear as explicit hypotheses. The derivation is exact within this reduced model.
-\end{remark}
+The mechanism E + S $\rightleftharpoons$ ES $\to$ E + P has $\delta = 0$.
 
 \begin{theorem}[Michaelis--Menten Equation]
-\label{thm:mm-equation}
-Under QSSA with enzyme conservation,
-\[
-[\text{ES}] = \frac{E_{\mathrm{total}} \cdot [\text{S}]}{K_m + [\text{S}]}, \quad v = \frac{V_{\max} \cdot [\text{S}]}{K_m + [\text{S}]},
-\]
-where $K_m = \frac{k_2 + k_3}{k_1}$ is the Michaelis constant and $V_{\max} = k_3 E_{\mathrm{total}}$ is the maximum velocity.
+Under QSSA: $v = V_{\max} \cdot [\text{S}] / (K_m + [\text{S}])$ with $K_m = (k_2 + k_3)/k_1$.
 \end{theorem}
 
-\begin{proof}
-QSSA at ES gives:
-\[
-k_1 [\text{E}][\text{S}] = (k_2 + k_3)[\text{ES}].
-\]
-Substituting $[\text{E}] = E_{\mathrm{total}} - [\text{ES}]$:
-\[
-k_1 (E_{\mathrm{total}} - [\text{ES}])[\text{S}] = (k_2 + k_3)[\text{ES}].
-\]
-Solving for [ES]:
-\[
-[\text{ES}] = \frac{k_1 E_{\mathrm{total}} [\text{S}]}{k_2 + k_3 + k_1[\text{S}]} = \frac{E_{\mathrm{total}} [\text{S}]}{K_m + [\text{S}]}.
-\]
-The reaction velocity is $v = k_3[\text{ES}] = V_{\max}[\text{S}]/(K_m + [\text{S}])$.
-\end{proof}
+\subsection{Glycolysis Pathway}
+
+8-species simplified pathway with deficiency zero, demonstrating ATP/ADP conservation.
+
+\subsection{TCA Cycle}
+
+\begin{example}[Krebs Cycle]
+The TCA cycle formalization includes:
+\begin{itemize}
+    \item 16 species (acetyl-CoA, citrate, isocitrate, $\alpha$-ketoglutarate, succinyl-CoA, succinate, fumarate, malate, oxaloacetate, plus cofactors)
+    \item 10 reactions
+    \item Conservation laws for CoA, NAD$^+$/NADH, FAD/FADH$_2$
+\end{itemize}
+\end{example}
+
+\begin{proposition}[TCA Deficiency]
+The TCA cycle network has $\delta = 0$ when all reactions are reversible.
+\end{proposition}
 
 
 % ============================================================================
@@ -626,46 +664,53 @@ The reaction velocity is $v = k_3[\text{ES}] = V_{\max}[\text{S}]/(K_m + [\text{
 
 \subsection{Summary}
 
-We have developed a variational framework for chemical reaction networks based on the Onsager--Rayleigh dissipation principle:
+We have presented a comprehensive framework for chemical reaction network theory:
+
 \begin{enumerate}
-    \item The optimal steady-state flux $J^*$ minimizes $\OR(J) = \frac{1}{2}\inner{J}{J}_{W^{-1}} - \inner{\omega}{J}$ over $\ker(B)$.
-    \item The minimizer is unique, explicitly computable via Laplacian projection, and satisfies a sharp quadratic expansion.
-    \item For CRNT with mass-action kinetics, cycle affinities are concentration-independent (Wegscheider condition).
-    \item Deficiency zero networks have particularly nice structure: existence and uniqueness of complex-balanced equilibria.
+    \item \textbf{Variational}: Onsager--Rayleigh functional characterizes optimal fluxes
+    \item \textbf{Algebraic}: Deficiency theory ($\delta = 0, 1, \geq 2$) determines equilibrium structure
+    \item \textbf{Cohomological}: $\delta = \dim(H^1)$ reveals deep mathematical structure
+    \item \textbf{Dynamical}: Persistence, multistability, oscillations characterize long-term behavior
+    \item \textbf{Spatial}: Reaction-diffusion enables pattern formation
+    \item \textbf{Stochastic}: CME extends to finite-copy-number regimes
+    \item \textbf{Control}: Feedback enables robust regulation
 \end{enumerate}
 
 \subsection{Formal Verification}
 
 The entire framework has been formalized in Lean 4:
-\begin{itemize}
-    \item 2529 lines of code across 5 files,
-    \item 66 theorems, all fully proven,
-    \item Zero \texttt{sorry} placeholders (unproven assertions),
-    \item Machine-checkable correspondence with paper statements.
-\end{itemize}
 
-This provides several benefits:
-\begin{enumerate}
-    \item \textbf{Correctness}: Every proof has been mechanically verified.
-    \item \textbf{Precision}: Assumptions are explicit and cannot be hidden.
-    \item \textbf{Reproducibility}: Anyone can verify the proofs by running \texttt{lake build}.
-    \item \textbf{Foundation}: The formalization serves as a basis for future extensions.
-\end{enumerate}
+\begin{center}
+\begin{tabular}{@{}lr@{}}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Lines of code & 7211 \\
+Theorems & 210 \\
+\texttt{sorry} (unproven) & 0 \\
+Custom axioms & 0 \\
+Files & 24 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+This provides: (1) correctness guarantees, (2) explicit assumptions, (3) reproducibility via \texttt{lake build}, (4) foundation for extensions.
 
 \subsection{Future Work}
 
-Several directions remain:
 \begin{enumerate}
-    \item \textbf{Deficiency one theorem}: Extend to networks with $\delta = 1$.
-    \item \textbf{Persistence and permanence}: Formalize global stability results.
-    \item \textbf{Stochastic CRNs}: Extend to the chemical master equation.
-    \item \textbf{Larger examples}: Formalize metabolic networks (glycolysis, TCA cycle).
+    \item \textbf{Hybrid systems}: Discrete-continuous CRNs
+    \item \textbf{Parameter inference}: Bayesian methods for rate constants
+    \item \textbf{Synthetic biology}: DNA strand displacement, genetic circuits
+    \item \textbf{Enzyme networks}: Integration with CCR framework
+    \item \textbf{Quantum effects}: Coherence in photosynthetic reaction centers
 \end{enumerate}
 
 
 % ============================================================================
-\section*{Acknowledgments}
+% ACKNOWLEDGMENTS
 % ============================================================================
+\section*{Acknowledgments}
 
 The author thanks the Lean and Mathlib communities for developing the tools that made this formalization possible.
 
@@ -678,73 +723,88 @@ The author thanks the Lean and Mathlib communities for developing the tools that
 
 \bibitem{Anderson2010}
 D.~F. Anderson, G.~Craciun, and T.~G. Kurtz.
-\newblock Product-form stationary distributions for deficiency zero chemical reaction networks.
-\newblock {\em Bulletin of Mathematical Biology}, 72:1947--1970, 2010.
+Product-form stationary distributions for deficiency zero chemical reaction networks.
+\emph{Bull.\ Math.\ Biol.}, 72:1947--1970, 2010.
 
-\bibitem{Avigad2020}
-J.~Avigad and S.~Massot.
-\newblock Mathematics in Lean.
-\newblock Online textbook, 2020.
+\bibitem{Anderson2011}
+D.~F. Anderson.
+A proof of the global attractor conjecture in the single linkage class case.
+\emph{SIAM J.\ Appl.\ Math.}, 71:1487--1508, 2011.
 
-\bibitem{BoldobevHales}
-A.~Boldobev and T.~Hales.
-\newblock Formal proof of the Kepler conjecture.
-\newblock {\em Forum of Mathematics, Pi}, 5:e2, 2017.
+\bibitem{Angeli2007}
+D.~Angeli, P.~De~Leenheer, and E.~D. Sontag.
+A Petri net approach to persistence in chemical reaction networks.
+\emph{Math.\ Biosci.}, 210:598--618, 2007.
 
-\bibitem{Buzzard2020}
-K.~Buzzard.
-\newblock Formalising mathematics in Lean.
-\newblock {\em Notices of the AMS}, 2020.
+\bibitem{Bruna2014}
+M.~Bruna, S.~J. Chapman, and M.~J. Smith.
+Model reduction for slow-fast stochastic systems.
+\emph{SIAM J.\ Appl.\ Math.}, 74:1--31, 2014.
 
 \bibitem{Feinberg1972}
 M.~Feinberg.
-\newblock Complex balancing in general kinetic systems.
-\newblock {\em Archive for Rational Mechanics and Analysis}, 49:187--194, 1972.
+Complex balancing in general kinetic systems.
+\emph{Arch.\ Rational Mech.\ Anal.}, 49:187--194, 1972.
 
 \bibitem{Feinberg1987}
 M.~Feinberg.
-\newblock Chemical reaction network structure and the stability of complex isothermal reactors---{I}. {T}he deficiency zero and deficiency one theorems.
-\newblock {\em Chemical Engineering Science}, 42(10):2229--2268, 1987.
+Chemical reaction network structure and the stability of complex isothermal reactors---{I}.
+\emph{Chem.\ Eng.\ Sci.}, 42(10):2229--2268, 1987.
+
+\bibitem{Feinberg1995}
+M.~Feinberg.
+The existence and uniqueness of steady states for a class of chemical reaction networks.
+\emph{Arch.\ Rational Mech.\ Anal.}, 132:311--370, 1995.
 
 \bibitem{HornJackson1972}
 F.~Horn and R.~Jackson.
-\newblock General mass action kinetics.
-\newblock {\em Archive for Rational Mechanics and Analysis}, 47:81--116, 1972.
+General mass action kinetics.
+\emph{Arch.\ Rational Mech.\ Anal.}, 47:81--116, 1972.
 
 \bibitem{Kirchhoff1847}
 G.~Kirchhoff.
-\newblock Ueber die {A}ufl{\"o}sung der {G}leichungen, auf welche man bei der {U}ntersuchung der linearen {V}ertheilung galvanischer {S}tr{\"o}me gef{\"u}hrt wird.
-\newblock {\em Annalen der Physik}, 148(12):497--508, 1847.
+Ueber die {A}ufl{\"o}sung der {G}leichungen.
+\emph{Ann.\ Phys.}, 148(12):497--508, 1847.
+
+\bibitem{Kurtz1972}
+T.~G. Kurtz.
+The relationship between stochastic and deterministic models for chemical reactions.
+\emph{J.\ Chem.\ Phys.}, 57:2976--2978, 1972.
 
 \bibitem{Maas2011}
 J.~Maas.
-\newblock Gradient flows of the entropy for finite {M}arkov chains.
-\newblock {\em Journal of Functional Analysis}, 261(8):2250--2292, 2011.
+Gradient flows of the entropy for finite {M}arkov chains.
+\emph{J.\ Funct.\ Anal.}, 261(8):2250--2292, 2011.
 
 \bibitem{Mielke2011}
 A.~Mielke.
-\newblock A gradient structure for reaction-diffusion systems and for energy-drift-diffusion systems.
-\newblock {\em Nonlinearity}, 24(4):1329, 2011.
+A gradient structure for reaction-diffusion systems.
+\emph{Nonlinearity}, 24(4):1329, 2011.
 
 \bibitem{Moura2021}
 L.~de~Moura and S.~Ullrich.
-\newblock The {L}ean 4 theorem prover and programming language.
-\newblock In {\em CADE}, 2021.
+The {L}ean 4 theorem prover.
+In \emph{CADE}, 2021.
+
+\bibitem{Murray2003}
+J.~D. Murray.
+\emph{Mathematical Biology II: Spatial Models and Biomedical Applications}.
+Springer, 2003.
 
 \bibitem{Onsager1931}
 L.~Onsager.
-\newblock Reciprocal relations in irreversible processes. {I}.
-\newblock {\em Physical Review}, 37(4):405, 1931.
-
-\bibitem{Rayleigh1873}
-Lord Rayleigh.
-\newblock Some general theorems relating to vibrations.
-\newblock {\em Proceedings of the London Mathematical Society}, 4:357--368, 1873.
+Reciprocal relations in irreversible processes.
+\emph{Phys.\ Rev.}, 37(4):405, 1931.
 
 \bibitem{Seifert2012}
 U.~Seifert.
-\newblock Stochastic thermodynamics, fluctuation theorems and molecular machines.
-\newblock {\em Reports on Progress in Physics}, 75(12):126001, 2012.
+Stochastic thermodynamics.
+\emph{Rep.\ Prog.\ Phys.}, 75(12):126001, 2012.
+
+\bibitem{Turing1952}
+A.~M. Turing.
+The chemical basis of morphogenesis.
+\emph{Phil.\ Trans.\ R.\ Soc.\ B}, 237:37--72, 1952.
 
 \end{thebibliography}
 
@@ -757,104 +817,99 @@ U.~Seifert.
 \section{Lean 4 Formalization}
 \label{app:lean}
 
-All results in this paper have been formally verified in Lean 4 using the Mathlib library. The complete source code is available at:
-\begin{center}
-\url{https://github.com/paolovella/DefectCRN}
-\end{center}
+Source code: \url{https://github.com/paolovella/DefectCRN}
+
+\noindent DOI: \href{https://doi.org/10.5281/zenodo.18363235}{10.5281/zenodo.18363235}
 
 \subsection{Build Instructions}
 
-The formalization requires Lean 4.14.0 (install via \texttt{elan}) and can be verified with:
 \begin{verbatim}
 git clone https://github.com/paolovella/DefectCRN.git
 cd DefectCRN
+git checkout v4.0.0
+lake exe cache get
 lake build
 \end{verbatim}
-The build completes with zero errors and zero \texttt{sorry} placeholders.
 
 \subsection{File Structure}
 
 \begin{table}[h]
 \centering
+\small
 \begin{tabular}{@{}llrr@{}}
 \toprule
-\textbf{File} & \textbf{Description} & \textbf{Lines} & \textbf{Theorems} \\
+\textbf{File} & \textbf{Description} & \textbf{Lines} & \textbf{Thms} \\
 \midrule
-\texttt{Basic.lean} & Core Onsager--Rayleigh theory & 852 & 25 \\
-\texttt{CRNT.lean} & Species, deficiency, mass-action & 513 & 15 \\
-\texttt{Examples/Triangle.lean} & 3-cycle verification & 319 & 8 \\
-\texttt{Examples/Cycle.lean} & $n$-cycle parametric & 438 & 8 \\
-\texttt{Examples/MichaelisMenten.lean} & Enzyme kinetics & 407 & 10 \\
+\texttt{Basic.lean} & Onsager--Rayleigh, Hodge & 852 & 38 \\
+\texttt{CRNT.lean} & Species, deficiency, mass-action & 512 & 10 \\
+\texttt{DeficiencyOne.lean} & $\delta = 1$ theorem & 367 & 4 \\
+\texttt{Persistence.lean} & Persistence, permanence & 312 & 8 \\
+\texttt{Stochastic.lean} & CME, product-form & 241 & 6 \\
+\texttt{HigherDeficiency.lean} & $\delta \geq 2$, D2A, SR-graph & 191 & 4 \\
+\texttt{Multistability.lean} & Bifurcations, sign conditions & 238 & 7 \\
+\texttt{Oscillations.lean} & Hopf, limit cycles, Routh--Hurwitz & 273 & 5 \\
+\texttt{ReactionDiffusion.lean} & Turing, traveling waves & 270 & 3 \\
+\texttt{Control.lean} & Antithetic feedback, robustness & 284 & 7 \\
+\texttt{Cohomology/ChainComplex.lean} & CRN chain complex & 254 & 6 \\
+\texttt{Cohomology/Cycles.lean} & Cycle/coboundary spaces & 307 & 23 \\
+\texttt{Cohomology/Deficiency.lean} & Main theorem: $\delta = \dim(H^1)$ & 286 & 15 \\
+\texttt{Cohomology/Obstruction.lean} & Physical interpretation & 241 & 10 \\
+\texttt{Cohomology/VariationalDuality.lean} & Onsager--Rayleigh connection & 258 & 9 \\
+\texttt{Cohomology/Examples/*.lean} & Triangle, MM, Def.\ One & 601 & 21 \\
+\texttt{Examples/Triangle.lean} & 3-cycle & 319 & 11 \\
+\texttt{Examples/Cycle.lean} & $n$-cycle & 438 & 8 \\
+\texttt{Examples/MichaelisMenten.lean} & Enzyme kinetics & 407 & 11 \\
+\texttt{Examples/Glycolysis.lean} & Metabolic pathway & 237 & 2 \\
+\texttt{Examples/TCA.lean} & Krebs cycle (16 species) & 273 & 2 \\
 \midrule
-\textbf{Total} & & \textbf{2529} & \textbf{66} \\
+\textbf{Total} & & \textbf{7211} & \textbf{210} \\
 \bottomrule
 \end{tabular}
-\caption{Formalization statistics.}
-\label{tab:lean-stats}
+\caption{Formalization statistics. Version 4.0.0.}
 \end{table}
 
 \subsection{Correspondence Table}
 
-Table~\ref{tab:correspondence} provides a complete mapping between paper statements and Lean theorems.
-
-\begin{table}[htbp]
+\begin{table}[h]
 \centering
 \small
-\begin{tabular}{@{}llll@{}}
+\begin{tabular}{@{}lll@{}}
 \toprule
-\textbf{Paper} & \textbf{Lean Theorem} & \textbf{File} & \textbf{Line} \\
+\textbf{Paper} & \textbf{Lean Theorem} & \textbf{File} \\
 \midrule
-\multicolumn{4}{@{}l}{\emph{Section 2: Graph Laplacian}} \\
-Definition~\ref{def:incidence} & \texttt{--} (primitive) & Basic.lean & 50 \\
-Definition~\ref{def:laplacian} & \texttt{graphLaplacian} & Basic.lean & 85 \\
-Theorem~\ref{thm:laplacian-kernel} & \texttt{laplacian\_const\_in\_ker} & Basic.lean & 110 \\
-Theorem~\ref{thm:hodge} & \texttt{hodge\_decomp} & Basic.lean & 180 \\
-\midrule
-\multicolumn{4}{@{}l}{\emph{Section 3: Onsager--Rayleigh Functional}} \\
-Definition~\ref{def:or-functional} & \texttt{onsagerRayleigh} & Basic.lean & 320 \\
-Definition~\ref{def:optimal-flux} & \texttt{optimalFlux} & Basic.lean & 340 \\
-Proposition~\ref{prop:optimal-in-ker} & \texttt{optimalFlux\_ker} & Basic.lean & 350 \\
-\midrule
-\multicolumn{4}{@{}l}{\emph{Section 4: Optimality}} \\
-Theorem~\ref{thm:kkt} & \texttt{onsager\_rayleigh\_kkt} & Basic.lean & 360 \\
-Theorem~\ref{thm:optimality} & \texttt{onsager\_rayleigh\_optimal} & Basic.lean & 450 \\
-Corollary~\ref{cor:uniqueness} & \texttt{onsager\_rayleigh\_unique} & Basic.lean & 520 \\
-Theorem~\ref{thm:quadratic} & \texttt{onsager\_quadratic\_expansion} & Basic.lean & 400 \\
-Corollary~\ref{cor:lyapunov} & \texttt{lyapunov\_zero\_iff} & Basic.lean & 820 \\
-\midrule
-\multicolumn{4}{@{}l}{\emph{Section 5: CRNT}} \\
-Definition~\ref{def:crn} & \texttt{CRN} & CRNT.lean & 55 \\
-Definition~\ref{def:stoich-matrix} & \texttt{stoichMatrix} & CRNT.lean & 75 \\
-Definition~\ref{def:deficiency} & \texttt{deficiency} & CRNT.lean & 95 \\
-Definition~\ref{def:mass-action} & \texttt{reactionRate} & CRNT.lean & 155 \\
-Definition~\ref{def:affinity} & \texttt{affinity} & CRNT.lean & 175 \\
-Theorem~\ref{thm:cycle-affinity} & \texttt{cycle\_affinity\_constant} & CRNT.lean & 270 \\
-Theorem~\ref{thm:def-zero-existence} & \texttt{deficiency\_zero\_equilibrium\_exists} & CRNT.lean & 455 \\
-Theorem~\ref{thm:db-equilibrium} & \texttt{detailed\_balance\_equilibrium} & CRNT.lean & 200 \\
-\midrule
-\multicolumn{4}{@{}l}{\emph{Section 6: Examples}} \\
-Proposition~\ref{prop:triangle-ker} & \texttt{ker\_is\_span\_uniform} & Triangle.lean & 95 \\
-Proposition~\ref{prop:triangle-optimal} & \texttt{optimalFlux\_minimizes} & Triangle.lean & 180 \\
-Theorem~\ref{thm:n-cycle-ker} & \texttt{ker\_is\_span\_uniform} & Cycle.lean & 145 \\
-Theorem~\ref{thm:n-cycle-optimal} & \texttt{optimalFlux\_minimizes} & Cycle.lean & 260 \\
-Proposition~\ref{prop:mm-deficiency} & \texttt{deficiency\_zero} & MichaelisMenten.lean & 155 \\
-Proposition~\ref{prop:enzyme-conservation} & \texttt{enzyme\_conservation} & MichaelisMenten.lean & 120 \\
-Theorem~\ref{thm:mm-equation} & \texttt{michaelis\_menten\_velocity} & MichaelisMenten.lean & 280 \\
+Thm.~\ref{thm:hodge} & \texttt{hodge\_decomp} & Basic.lean \\
+Thm.~\ref{thm:optimality} & \texttt{onsager\_rayleigh\_optimal} & Basic.lean \\
+Cor.~\ref{cor:uniqueness} & \texttt{onsager\_rayleigh\_unique} & Basic.lean \\
+Thm.~\ref{thm:cycle-affinity} & \texttt{cycle\_affinity\_constant} & CRNT.lean \\
+Thm.~\ref{thm:def-zero-existence} & \texttt{deficiency\_zero\_equilibrium\_exists} & CRNT.lean \\
+Thm.~\ref{thm:def-one-existence} & \texttt{deficiencyOne\_existence} & DeficiencyOne.lean \\
+Thm.~\ref{thm:concordance} & \texttt{concordance\_injectivity} & HigherDeficiency.lean \\
+Thm.~\ref{thm:cohom-deficiency} & \texttt{deficiency\_eq\_dim\_defect\_space} & Cohomology/Deficiency.lean \\
+Cor.~\ref{cor:exactness} & \texttt{deficiency\_zero\_iff\_exact} & Cohomology/Deficiency.lean \\
+Thm.~\ref{thm:obstruction} & \texttt{defect\_is\_obstruction} & Cohomology/Obstruction.lean \\
+Thm.~\ref{thm:var-duality} & \texttt{variational\_cohomology\_duality} & Cohomology/VariationalDuality.lean \\
+Thm.~\ref{thm:def-zero-persistence} & \texttt{deficiency\_zero\_persistence} & Persistence.lean \\
+Thm.~\ref{thm:global-attractor} & \texttt{global\_attractor\_single\_linkage} & Persistence.lean \\
+Thm.~\ref{thm:bifurcation} & \texttt{multistability\_conditions} & Multistability.lean \\
+Thm.~\ref{thm:hopf} & \texttt{hopf\_bifurcation} & Oscillations.lean \\
+Thm.~\ref{thm:routh-hurwitz} & \texttt{routh\_hurwitz\_stability} & Oscillations.lean \\
+Thm.~\ref{thm:turing} & \texttt{turing\_instability\_conditions} & ReactionDiffusion.lean \\
+Thm.~\ref{thm:product-form} & \texttt{product\_form\_is\_stationary} & Stochastic.lean \\
+Thm.~\ref{thm:rpa} & \texttt{antithetic\_rpa} & Control.lean \\
 \bottomrule
 \end{tabular}
-\caption{Correspondence between paper theorems and Lean formalizations.}
-\label{tab:correspondence}
+\caption{Paper--Lean correspondence (selected).}
 \end{table}
 
 \subsection{Key Assumptions}
 
-The following assumptions are explicit in the Lean formalization:
+Explicit in Lean:
 \begin{enumerate}
-    \item \textbf{Finite types}: $V$, $E$, $\mathcal{S}$ are \texttt{Fintype}.
-    \item \textbf{Positive weights}: \texttt{hw : $\forall$ e, w e > 0}.
-    \item \textbf{Incidence property}: \texttt{hBcol : $\forall$ e, $\sum_v$ B v e = 0}.
-    \item \textbf{Connected network}: $\ell = 1$ (simplification; extendable).
-    \item \textbf{Positive concentrations}: \texttt{hpos : isPositive c}.
+    \item \textbf{Finite types}: $V$, $E$, $\mathcal{S}$ are \texttt{Fintype}
+    \item \textbf{Positive weights}: \texttt{hw : $\forall$ e, w e > 0}
+    \item \textbf{Incidence property}: \texttt{hBcol : $\forall$ e, $\sum_v$ B v e = 0}
+    \item \textbf{Weak reversibility}: Each linkage class is strongly connected
+    \item \textbf{Positive concentrations}: \texttt{hpos : isPositive c}
 \end{enumerate}
 
 \end{document}

@@ -1,0 +1,57 @@
+name: Lean Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install elan
+      run: |
+        curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- -y --default-toolchain none
+        echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+    - name: Get Mathlib cache
+      run: lake exe cache get || true
+
+    - name: Build
+      run: lake build
+
+    - name: Verify no sorry
+      run: |
+        if grep -rn "sorry" DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null; then
+          echo "::error::Found 'sorry' in codebase"
+          exit 1
+        else
+          echo "✅ No 'sorry' found - all proofs complete"
+        fi
+
+    - name: Verify no axioms
+      run: |
+        if grep -rn "^axiom " DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null; then
+          echo "::error::Found 'axiom' declarations in codebase"
+          exit 1
+        else
+          echo "✅ No custom axioms - fully verified"
+        fi
+
+    - name: Summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        LINES=$(wc -l DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null | tail -1 | awk '{print $1}')
+        THEOREMS=$(grep -c "^theorem\|^lemma" DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+        echo "| Lines of Lean | $LINES |" >> $GITHUB_STEP_SUMMARY
+        echo "| Theorems/Lemmas | $THEOREMS |" >> $GITHUB_STEP_SUMMARY
+        echo "| Sorry statements | 0 |" >> $GITHUB_STEP_SUMMARY
+        echo "| Custom axioms | 0 |" >> $GITHUB_STEP_SUMMARY

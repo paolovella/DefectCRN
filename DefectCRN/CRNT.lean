@@ -8,8 +8,8 @@ import Mathlib.Data.Matrix.Rank
 import Mathlib.Data.Real.Basic
 import Mathlib.Data.Fin.Basic
 import Mathlib.Data.Fintype.BigOperators
-import Mathlib.Algebra.BigOperators.Group.Finset.Basic
-import Mathlib.Algebra.Order.Ring.Lemmas
+import Mathlib.Algebra.BigOperators.Group.Finset
+import Mathlib.Algebra.Order.Ring.Defs
 import Mathlib.LinearAlgebra.Matrix.ToLin
 import Mathlib.LinearAlgebra.Dimension.Finrank
 import Mathlib.Analysis.SpecialFunctions.Log.Basic
@@ -459,8 +459,7 @@ theorem deficiency_zero_equilibrium_exists (crn : CRN V E S)
   constructor
   · exact hpos
   · -- J ∈ ker(B) implies complex balanced
-    rw [flux_in_ker_iff_balanced]
-    exact hker
+    exact (flux_in_ker_iff_balanced crn J).mp hker
 
 /-- For reversible networks at detailed balance, all affinities vanish.
     This is essentially the definition of detailed balance. -/

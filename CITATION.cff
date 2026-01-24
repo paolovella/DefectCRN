@@ -1,0 +1,66 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "DefectCRN: Formal Verification of Chemical Reaction Network Theory"
+abstract: >-
+  A formally verified Lean 4 library for Chemical Reaction Network Theory (CRNT),
+  implementing the Onsager-Rayleigh variational framework, Feinberg-Horn-Jackson
+  deficiency theorems, persistence theory, and stochastic extensions via the
+  Chemical Master Equation.
+authors:
+  - family-names: Vella
+    given-names: Paolo
+    email: paolovella1993@gmail.com
+repository-code: "https://github.com/paolovella/DefectCRN"
+license: Apache-2.0
+version: "4.0.0"
+doi: "10.5281/zenodo.18363235"
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.18363235"
+    description: "Zenodo archive"
+date-released: "2025-01-24"
+keywords:
+  - chemical reaction networks
+  - formal verification
+  - Lean 4
+  - Mathlib
+  - CRNT
+  - deficiency theory
+  - Onsager-Rayleigh
+  - mass action kinetics
+  - persistence
+  - stochastic
+references:
+  - type: article
+    authors:
+      - family-names: Feinberg
+        given-names: Martin
+    title: "Complex balancing in general kinetic systems"
+    journal: "Archive for Rational Mechanics and Analysis"
+    volume: 49
+    start: 187
+    end: 194
+    year: 1972
+  - type: article
+    authors:
+      - family-names: Horn
+        given-names: Frederick
+      - family-names: Jackson
+        given-names: Roy
+    title: "General mass action kinetics"
+    journal: "Archive for Rational Mechanics and Analysis"
+    volume: 47
+    start: 81
+    end: 116
+    year: 1972
+  - type: article
+    authors:
+      - family-names: Feinberg
+        given-names: Martin
+    title: "The existence and uniqueness of steady states for a class of chemical reaction networks"
+    journal: "Archive for Rational Mechanics and Analysis"
+    volume: 132
+    start: 311
+    end: 370
+    year: 1995
