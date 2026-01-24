@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -27,14 +27,31 @@ jobs:
 
     - name: Verify no sorry
       run: |
-        if grep -r "sorry" DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null; then
-          echo "❌ ERROR: Found 'sorry' in codebase"
+        if grep -rn "sorry" DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null; then
+          echo "::error::Found 'sorry' in codebase"
           exit 1
         else
           echo "✅ No 'sorry' found - all proofs complete"
         fi
 
-    - name: Line count
+    - name: Verify no axioms
       run: |
-        echo "📊 Line counts:"
-        wc -l DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null || wc -l DefectCRN/*.lean
+        if grep -rn "^axiom " DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null; then
+          echo "::error::Found 'axiom' declarations in codebase"
+          exit 1
+        else
+          echo "✅ No custom axioms - fully verified"
+        fi
+
+    - name: Summary
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        LINES=$(wc -l DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null | tail -1 | awk '{print $1}')
+        THEOREMS=$(grep -c "^theorem\|^lemma" DefectCRN/*.lean DefectCRN/**/*.lean 2>/dev/null | awk -F: '{sum+=$2} END {print sum}')
+        echo "| Lines of Lean | $LINES |" >> $GITHUB_STEP_SUMMARY
+        echo "| Theorems/Lemmas | $THEOREMS |" >> $GITHUB_STEP_SUMMARY
+        echo "| Sorry statements | 0 |" >> $GITHUB_STEP_SUMMARY
+        echo "| Custom axioms | 0 |" >> $GITHUB_STEP_SUMMARY
