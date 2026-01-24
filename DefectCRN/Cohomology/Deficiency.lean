@@ -9,11 +9,11 @@ import DefectCRN.DeficiencyOne
 set_option linter.unusedSectionVars false
 
 /-!
-# The Deficiency Theorem: δ = dim(DefectSpace)
+# The Deficiency Theorem: δ = dim(DeficiencySubspace)
 
 This file contains the MAIN THEOREM connecting CRNT deficiency to cohomology:
 
-  **δ = dim(ker(Y) ∩ im(Bᵀ))**
+  **δ = dim(ker(Y) ∩ im(Bᵀ)) = dim(DeficiencySubspace)**
 
 ## Background
 
@@ -27,15 +27,19 @@ where:
 
 ## Cohomological Interpretation
 
-The deficiency has a beautiful cohomological interpretation:
-  δ = dim(H¹)
+The deficiency has a cohomological interpretation:
+  δ = dim(DeficiencySubspace)
 
-where H¹ = ker(Y) ∩ im(Bᵀ) is the first cohomology of the chain complex:
-  0 → ℝᴱ →^{Bᵀ} ℝⱽ →^{Y} ℝˢ → 0
+where DeficiencySubspace = ker(Y) ∩ im(Bᵀ).
+
+IMPORTANT TERMINOLOGY: The DeficiencySubspace is ISOMORPHIC to H¹ of a
+certain kernel complex, but it is not literally defined as H¹. We call it
+"DeficiencySubspace" to maintain mathematical precision. The isomorphism
+is stated in `deficiency_subspace_iso_H1`.
 
 ## Main Results
 
-* `deficiency_eq_dim_defect_space` - THE MAIN THEOREM: δ = dim(DefectSpace)
+* `deficiency_eq_dim_defect_space` - THE MAIN THEOREM: δ = dim(DeficiencySubspace)
 * `deficiency_zero_iff_exact` - δ = 0 iff chain complex is exact
 * `rank_nullity_chain` - Rank-nullity relations for the chain complex
 
@@ -269,17 +273,24 @@ theorem invisible_flux_deficiency (cc : CRNChainComplex V E S)
 
 This module establishes THE MAIN THEOREM:
 
-  **δ = dim(ker(Y) ∩ im(Bᵀ)) = dim(DefectSpace) = dim(H¹)**
+  **δ = dim(ker(Y) ∩ im(Bᵀ)) = dim(DeficiencySubspace)**
+
+The DeficiencySubspace is ISOMORPHIC to H¹ of the kernel complex,
+which justifies calling this theory "cohomological deficiency theory".
 
 Key results:
-1. Classical deficiency δ = n - l - rank(N) equals cohomological dimension
+1. Classical deficiency δ = n - l - rank(N) equals dim(DeficiencySubspace)
 2. Deficiency zero ⟺ chain complex is exact
-3. DefectSpace elements are "invisible fluxes" with no species effect
-4. Higher deficiency = more complex steady-state structure
+3. DeficiencySubspace elements are "hidden degrees of freedom"
+4. Higher deficiency = more degrees of freedom in steady-state structure
+
+IMPORTANT: The deficiency measures degrees of freedom, NOT obstruction to
+existence. Networks with δ > 0 can still have positive steady states
+(e.g., deficiency one theorem with weak reversibility).
 
 This unifies:
 - Feinberg's algebraic deficiency theory
-- Cohomological/homological algebra
+- Cohomological/homological algebra (via isomorphism theorem)
 - The Onsager-Rayleigh variational framework
 -/
 

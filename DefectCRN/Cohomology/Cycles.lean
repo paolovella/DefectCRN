@@ -11,13 +11,13 @@ set_option linter.unusedSectionVars false
 # Cycle and Coboundary Spaces
 
 This file defines the cycle and coboundary spaces for CRN chain complexes,
-establishing the framework for computing cohomology.
+establishing the framework for computing the DeficiencySubspace.
 
 ## Main Definitions
 
 * `CycleSpace` - ker(Y) : complex vectors annihilated by composition
 * `CoboundarySpace` - im(Bᵀ) : boundaries of edge fluxes
-* `DefectSpace` - ker(Y) ∩ im(Bᵀ) : the cohomology H¹
+* `DefectSpace` - ker(Y) ∩ im(Bᵀ) : the DeficiencySubspace
 
 ## Main Results
 
@@ -27,10 +27,13 @@ establishing the framework for computing cohomology.
 
 ## Cohomological Interpretation
 
-The DefectSpace is analogous to H¹ in a chain complex:
+The DefectSpace is ISOMORPHIC to the first cohomology H¹ of a kernel complex:
 - Elements are "cycles" (in ker Y) that are also "boundaries" (in im Bᵀ)
-- For exact sequences, H¹ = 0
-- Deficiency measures dim(H¹)
+- For exact sequences, DefectSpace = {0}
+- Deficiency = dim(DefectSpace)
+
+See `deficiency_subspace_iso_H1` in Foundations/DeficiencySubspace.lean for
+the precise isomorphism statement.
 
 ## References
 
@@ -133,11 +136,12 @@ lemma coboundarySpace_eq_imBt (cc : CRNChainComplex V E S) :
   rfl
 
 /-!
-## Part 3: Defect Space (H¹)
+## Part 3: Defect Space (DeficiencySubspace)
 -/
 
-/-- The defect space: H¹ = ker(Y) ∩ im(Bᵀ).
-    This is the first cohomology group of the CRN chain complex. -/
+/-- The defect space: ker(Y) ∩ im(Bᵀ).
+    This is ISOMORPHIC to the first cohomology H¹ of the kernel complex.
+    We call it "DefectSpace" or "DeficiencySubspace" to maintain precision. -/
 def DefectSpace (cc : CRNChainComplex V E S) : Set (V → ℝ) :=
   CycleSpace cc ∩ CoboundarySpace cc
 
@@ -296,10 +300,10 @@ This module establishes:
 
 1. **CycleSpace**: ker(Y), vectors annihilated by composition matrix
 2. **CoboundarySpace**: im(Bᵀ), boundaries of edge fluxes
-3. **DefectSpace**: H¹ = ker(Y) ∩ im(Bᵀ), the first cohomology
+3. **DefectSpace**: ker(Y) ∩ im(Bᵀ), the DeficiencySubspace (≅ H¹)
 4. **Subspace properties**: All spaces closed under +, scalar *, contain 0
 5. **Exactness**: Characterized by trivial defect space
-6. **Connection to steady states**: Defect elements correspond to "invisible" fluxes
+6. **Connection to steady states**: Defect elements correspond to degrees of freedom
 
 The dimension of DefectSpace equals the CRNT deficiency δ.
 -/

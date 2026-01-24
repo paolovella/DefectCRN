@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Paolo Vella
 -/
 import DefectCRN.Basic
+import DefectCRN.Cohomology.Foundations.InnerProducts
 
 set_option linter.unusedSectionVars false
 
@@ -32,6 +33,18 @@ where:
 
 The chain complex condition requires understanding when im(Bᵀ) ⊆ ker(Y).
 This does NOT hold in general - the deficiency measures the failure of exactness.
+
+## Terminology Note
+
+The `defectSpace` defined here (ker(Y) ∩ im(Bᵀ)) is equivalent to the
+`DeficiencySubspace` in Foundations/DeficiencySubspace.lean. We keep both
+names for compatibility - use `DeficiencySubspace` for new code.
+
+## Orthogonality Note
+
+The Hodge decomposition uses W-inner product for orthogonality. Under the
+W⁻¹-inner product (used in Onsager-Rayleigh), the orthogonal complement
+of im(Bᵀ) is ker(B·W⁻¹), NOT ker(B). See Foundations/InnerProducts.lean.
 
 ## References
 
@@ -168,7 +181,14 @@ theorem chain_commutes (cc : CRNChainComplex V E S) (J : E → ℝ) :
 -/
 
 /-- The defect space: ker(Y) ∩ im(Bᵀ).
-    This measures the failure of exactness at V. -/
+    This measures the failure of exactness at V.
+
+    TERMINOLOGY: This is equivalent to `DeficiencySubspace` in the Foundations module.
+    The dimension of this space equals the classical CRNT deficiency δ.
+
+    NOTE: This is NOT literally "H¹" of a chain complex (which would require
+    a quotient structure). It is ISOMORPHIC to H¹ of the kernel complex.
+    See `deficiency_subspace_iso_H1` in Foundations/DeficiencySubspace.lean. -/
 def defectSpace (cc : CRNChainComplex V E S) : Set (V → ℝ) :=
   kerY cc ∩ imBt cc
 

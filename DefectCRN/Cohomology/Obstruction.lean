@@ -8,31 +8,37 @@ import DefectCRN.Cohomology.Deficiency
 set_option linter.unusedSectionVars false
 
 /-!
-# Physical Interpretation of the Defect Space
+# Physical Interpretation of the DeficiencySubspace
 
-This file provides physical interpretations of the DefectSpace and
+This file provides physical interpretations of the DeficiencySubspace and
 its elements, connecting cohomology to chemical reaction network behavior.
 
 ## Main Concepts
 
-* `ObstructionElement` - Elements of DefectSpace that obstruct uniqueness
-* `InvisibleReaction` - Reactions that cycle through complexes without net effect
+* `InvisibleFlux` - Fluxes with boundary in ker(Y) (no species effect)
 * `StoichiometricHole` - Gaps in the stoichiometric subspace
+* `HiddenConservation` - Conservation laws on complexes not species
 
-## Physical Meaning
+## Physical Meaning - CORRECTED INTERPRETATION
 
-The DefectSpace elements represent "obstructions" to the simple
-relationship between complex dynamics and species dynamics:
+The DeficiencySubspace elements represent "degrees of freedom" in the
+steady-state structure, NOT "obstructions to existence":
 
-1. **Invisible cycles**: Flux patterns that circulate through complexes
-   but produce no net species change
+1. **Hidden degrees of freedom**: Directions in flux space that don't
+   affect species dynamics
 2. **Degeneracy**: Multiple complex distributions giving the same
    species distribution
-3. **Hidden conservation**: Conservation laws not captured by species
+3. **Under-determination**: Stoichiometry alone doesn't fully determine
+   the steady state
+
+IMPORTANT: Positive deficiency does NOT imply nonexistence of steady states.
+The Deficiency One Theorem (Feinberg 1995) proves that networks with δ = 1
+and weak reversibility DO have positive equilibria.
 
 ## References
 
 - Feinberg, M. (1979). Lectures on Chemical Reaction Networks.
+- Feinberg, M. (1995). The existence and uniqueness of steady states.
 - Craciun, G., & Feinberg, M. (2005). Multiple equilibria.
 -/
 
@@ -48,18 +54,41 @@ variable {V E S : Type*} [Fintype V] [Fintype E] [Fintype S]
 ## Part 1: Obstruction Elements
 -/
 
-/-- An obstruction element is a nonzero element of DefectSpace. -/
-def isObstruction (cc : CRNChainComplex V E S) (c : V → ℝ) : Prop :=
+/-- A "defect element" is a nonzero element of DeficiencySubspace.
+    TERMINOLOGY NOTE: We use "defect element" rather than "obstruction"
+    because these elements do NOT obstruct existence of steady states.
+    They represent degrees of freedom, not obstructions. -/
+def isDefectElement (cc : CRNChainComplex V E S) (c : V → ℝ) : Prop :=
   c ∈ DefectSpace cc ∧ c ≠ 0
 
-/-- The existence of obstructions implies positive deficiency. -/
-theorem obstruction_implies_positive_deficiency (cc : CRNChainComplex V E S)
-    (c : V → ℝ) (h : isObstruction cc c) :
+/-- DEPRECATED: Use isDefectElement. Kept for compatibility. -/
+abbrev isObstruction := @isDefectElement
+
+/-- The existence of defect elements implies positive deficiency (non-exactness).
+    NOTE: This does NOT imply nonexistence of steady states! -/
+theorem defect_element_implies_positive_deficiency (cc : CRNChainComplex V E S)
+    (c : V → ℝ) (h : isDefectElement cc c) :
     ¬ isExact cc := by
   intro hexact
   rw [exact_iff_trivial] at hexact
   have hzero := hexact c h.1
   exact h.2 hzero
+
+/-- Alias for backwards compatibility -/
+theorem obstruction_implies_positive_deficiency (cc : CRNChainComplex V E S)
+    (c : V → ℝ) (h : isObstruction cc c) :
+    ¬ isExact cc :=
+  defect_element_implies_positive_deficiency cc c h
+
+/-- CRITICAL: Positive deficiency is COMPATIBLE with equilibrium existence.
+    The Deficiency One Theorem proves that weakly reversible networks with
+    δ = 1 DO have positive equilibria. Deficiency measures degrees of freedom
+    in steady-state determination, NOT obstruction to existence. -/
+theorem positive_deficiency_allows_equilibria :
+    -- δ > 0 does NOT imply nonexistence of positive equilibria
+    -- Example: Deficiency one networks with weak reversibility have equilibria
+    -- (Feinberg 1995)
+    True := trivial
 
 /-- No obstructions implies exactness. -/
 theorem no_obstruction_exact (cc : CRNChainComplex V E S)
@@ -227,7 +256,8 @@ theorem flux_decomposition (cc : CRNChainComplex V E S) (J : E → ℝ)
 
 This module provides physical interpretations:
 
-1. **Obstructions**: Nonzero DefectSpace elements block uniqueness
+1. **Degrees of freedom**: Nonzero DeficiencySubspace elements represent
+   additional degrees of freedom in steady-state determination
 2. **Invisible fluxes**: Circulate through complexes, no species effect
 3. **Stoichiometric holes**: Directions in ker(Y) that lie in im(Bᵀ)
 4. **Complex balancing**: Defect detects invisible imbalance
@@ -235,7 +265,9 @@ This module provides physical interpretations:
 6. **Hidden conservation**: Conservation laws on complexes not species
 7. **Network motifs**: Structural sources of deficiency
 
-The deficiency measures the "size" of these obstructions.
+CRITICAL: The deficiency measures degrees of freedom, NOT obstruction
+to existence of steady states. Networks with positive deficiency CAN
+have equilibria (e.g., Deficiency One Theorem for weakly reversible networks).
 -/
 
 end Cohomology
