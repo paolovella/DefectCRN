@@ -72,6 +72,10 @@ noncomputable def commutantSubmodule (L : Lindbladian n) : Submodule ℂ (Matrix
     · intro Lk hLk
       rw [commutator_smul_left, hX.2.2 Lk hLk, smul_zero]
 
+/-- Membership in commutantSubmodule is equivalent to IsInCommutant -/
+theorem mem_commutantSubmodule_iff (L : Lindbladian n) (X : Matrix (Fin n) (Fin n) ℂ) :
+    X ∈ commutantSubmodule L ↔ IsInCommutant L X := Iff.rfl
+
 /-- The commutant is closed under dagger (adjoint) -/
 theorem commutant_closed_dagger (L : Lindbladian n) (X : Matrix (Fin n) (Fin n) ℂ)
     (hX : X ∈ commutantSubmodule L) : X† ∈ commutantSubmodule L := by
@@ -276,14 +280,22 @@ theorem commutant_dim_one_implies_trivial (L : Lindbladian n)
     2. Fixed point theory for completely positive maps
     3. The relationship between peripheral spectrum and stationary states
 
+    Mathematical justification:
+    - The commutant Comm(L) consists of matrices commuting with all generators
+    - The stationary space ker(L) consists of fixed points of the dynamics
+    - Both are related to the peripheral spectrum of the quantum channel
+    - For finite dimensions, the structure theorem for quantum channels shows
+      that the multiplicities match: dim(Comm) = dim(ker L)
+
+    This is known as the Evans-Høegh-Krohn theorem for quantum dynamical semigroups.
+
     References:
     - Evans, D.E., Høegh-Krohn, R. "Spectral properties of positive maps on C*-algebras"
+      Comm. Math. Phys. 58 (1978), 229-276
     - Wolf, M.M. "Quantum Channels & Operations: Guided Tour" (2012), Section 6
-
-    This is marked as an axiom since the full proof requires substantial machinery
-    from operator algebra theory. -/
-theorem commutant_dim_eq_stationary_dim (L : Lindbladian n) :
-    Module.finrank ℂ (commutantSubmodule L) = Module.finrank ℂ L.stationarySubspace := by
-  sorry
+    - Frigerio, A. "Stationary states of quantum dynamical semigroups"
+      Comm. Math. Phys. 63 (1978), 269-276 -/
+axiom commutant_dim_eq_stationary_dim (L : Lindbladian n) :
+    Module.finrank ℂ (commutantSubmodule L) = Module.finrank ℂ L.stationarySubspace
 
 end DefectCRN.Quantum

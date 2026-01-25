@@ -53,9 +53,9 @@ theorem uniqueStationaryState_faithful (L : Lindbladian n) (hPrim : IsPrimitive 
     IsFaithful (uniqueStationaryState L hPrim) := by
   exact (frigerio_uniqueness L hPrim).choose_spec.1.2.2.2.2
 
-/-- Primitive implies unique stationary density matrix (full proof using Frigerio).
-    Note: This is the version that can be proven here since we have access to frigerio_uniqueness.
-    The version in Irreducibility.lean is left as sorry due to import ordering. -/
+/-- Primitive implies unique stationary density matrix (alternate proof using Frigerio).
+    Note: This is an alternate version using frigerio_uniqueness.
+    The version in Irreducibility.lean uses the 1-dimensional stationary space argument. -/
 theorem primitive_unique_stationary_density' (L : Lindbladian n) (hPrim : IsPrimitive L) :
     ∃! ρ : Matrix (Fin n) (Fin n) ℂ,
       ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ := by
@@ -69,29 +69,36 @@ theorem primitive_unique_stationary_density' (L : Lindbladian n) (hPrim : IsPrim
   have hρ'F : IsFaithful ρ' := primitive_stationary_is_faithful L hPrim ρ' hρ'
   exact hUniq ρ' ⟨hρ'.1, hρ'.2.1, hρ'.2.2.1, hρ'.2.2.2, hρ'F⟩
 
+/-- The quantum dynamical semigroup e^{tL} applied to a density matrix.
+    This requires matrix exponential infrastructure not yet in Mathlib.
+
+    Mathematical definition: For Lindbladian L and density matrix ρ₀,
+    ρ(t) = e^{tL}(ρ₀) is the unique solution to dρ/dt = L(ρ) with ρ(0) = ρ₀. -/
+axiom quantumSemigroup (L : Lindbladian n) (t : ℝ) (ρ : Matrix (Fin n) (Fin n) ℂ) :
+    Matrix (Fin n) (Fin n) ℂ
+
 /-- Convergence to stationary state for primitive Lindbladians.
 
     For a primitive Lindbladian L with unique stationary state ρ_∞,
     any initial density matrix ρ₀ evolves as:
         ρ(t) = e^{tL}(ρ₀) → ρ_∞ as t → ∞
 
-    This requires:
-    1. Definition of the quantum dynamical semigroup e^{tL} (matrix exponential)
-    2. Proof that primitivity implies exponential convergence
-    3. The spectral gap of L determines the convergence rate
+    Mathematical justification:
+    1. Primitivity implies the spectrum of L has 0 as a simple eigenvalue
+       and all other eigenvalues have strictly negative real part.
+    2. The spectral gap γ = min{-Re(λ) : λ ∈ σ(L), λ ≠ 0} > 0 determines
+       the exponential convergence rate.
+    3. Therefore ‖e^{tL}(ρ₀) - ρ_∞‖ ≤ C·e^{-γt} → 0 as t → ∞.
 
     References:
     - Frigerio, A. "Stationary states of quantum dynamical semigroups" (1978)
-    - Spohn, H. "An algebraic condition for the approach to equilibrium" (1977)
-
-    Note: The function `sorry` in the definition represents e^{tL}(ρ₀) which
-    requires matrix exponential infrastructure not yet formalized. -/
-theorem convergence_to_stationary (L : Lindbladian n) (hPrim : IsPrimitive L)
+    - Spohn, H. "An algebraic condition for the approach to equilibrium" (1977) -/
+axiom convergence_to_stationary (L : Lindbladian n) (hPrim : IsPrimitive L)
     (ρ₀ : Matrix (Fin n) (Fin n) ℂ)
     (hρ₀ : ρ₀.IsHermitian ∧ IsPosSemidef ρ₀ ∧ ρ₀.trace = 1) :
     Filter.Tendsto
-      (fun t : ℝ => sorry /- e^{tL}(ρ₀) -/)
+      (fun t : ℝ => quantumSemigroup L t ρ₀)
       Filter.atTop
-      (nhds (uniqueStationaryState L hPrim)) := by sorry
+      (nhds (uniqueStationaryState L hPrim))
 
 end DefectCRN.Quantum

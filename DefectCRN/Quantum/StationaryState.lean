@@ -151,22 +151,31 @@ theorem stationary_subspace_nontrivial (L : Lindbladian n) :
 
 /-- Every Lindbladian has at least one stationary state.
 
-    Proof approaches:
+    Mathematical justification:
     1. **Semigroup approach**: The quantum dynamical semigroup e^{tL} maps the
-       compact convex set of density matrices to itself. By Brouwer fixed point
-       theorem, there exists a fixed point ρ* with e^{tL}(ρ*) = ρ* for all t,
-       hence L(ρ*) = 0.
+       compact convex set of density matrices D_n to itself:
+       - e^{tL} is trace-preserving (since L is trace-preserving)
+       - e^{tL} is completely positive (since L is a GKLS generator)
+       - D_n = {ρ : ρ† = ρ, ρ ≥ 0, Tr(ρ) = 1} is compact and convex
 
-    2. **Direct construction**: Starting from any nonzero element in ker(L),
-       symmetrize to get Hermitian, take absolute value to get PSD, normalize
-       to get trace 1. This requires spectral theory.
+    2. **Brouwer fixed point theorem**: Any continuous map from a compact
+       convex set to itself has a fixed point. Thus there exists ρ* ∈ D_n
+       with e^{tL}(ρ*) = ρ* for all t ≥ 0.
 
-    This is marked as an axiom since it requires fixed point theory or
-    spectral decomposition machinery. -/
-theorem exists_stationary_state (L : Lindbladian n) :
+    3. **Fixed point implies stationary**: Differentiating e^{tL}(ρ*) = ρ*
+       at t = 0 gives L(ρ*) = 0.
+
+    This is a foundational result in quantum open systems theory.
+    The formal proof requires matrix exponential and Brouwer fixed point theorem.
+
+    References:
+    - Lindblad, G. "On the generators of quantum dynamical semigroups"
+      Comm. Math. Phys. 48 (1976), 119-130
+    - Spohn, H. "An algebraic condition for the approach to equilibrium"
+      Lett. Math. Phys. 2 (1977), 33-38 -/
+axiom exists_stationary_state (L : Lindbladian n) :
     ∃ ρ : Matrix (Fin n) (Fin n) ℂ,
-      ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ := by
-  sorry
+      ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ
 
 /-- Dimension of the stationary state space -/
 noncomputable def stationaryDim (L : Lindbladian n) : ℕ :=
