@@ -75,17 +75,18 @@ theorem gnsInnerProduct_smul_right (σ A B : Matrix (Fin n) (Fin n) ℂ) (c : �
 
 /-- For positive semidefinite σ, the GNS inner product satisfies ⟨A,A⟩_σ ≥ 0.
 
-    Mathematical proof using spectral decomposition:
-    Let σ = U D U† where D = diag(d₁, ..., dₙ) with dᵢ ≥ 0.
-    Then Tr(σ A† A) = Tr(D (AU)† (AU)) = Σᵢ dᵢ ‖(AU)ᵢ‖² ≥ 0.
-
-    Alternatively: Tr(σ A† A) = Σᵢ dᵢ ⟨eᵢ|A†A|eᵢ⟩ = Σᵢ dᵢ ‖A|eᵢ⟩‖² ≥ 0
-    where |eᵢ⟩ are the eigenvectors of σ.
-
-    Full formal proof requires trace-norm inequalities for products of PSD matrices
-    which are not yet available in Mathlib. -/
-axiom gnsInnerProduct_self_nonneg (σ A : Matrix (Fin n) (Fin n) ℂ)
-    (hσ : IsPosSemidef σ) : 0 ≤ Complex.re (gnsInnerProduct σ A A)
+    Proof: By trace cyclicity, Tr(σ A† A) = Tr(A σ A†).
+    The sandwich product A σ A† is PSD (by sandwich lemma).
+    The trace of a PSD matrix has non-negative real part. -/
+theorem gnsInnerProduct_self_nonneg (σ A : Matrix (Fin n) (Fin n) ℂ)
+    (hσ : IsPosSemidef σ) : 0 ≤ Complex.re (gnsInnerProduct σ A A) := by
+  unfold gnsInnerProduct
+  -- Tr(σ A† A) = Tr(A σ A†) by trace cyclicity
+  rw [Matrix.trace_mul_cycle]
+  -- A σ A† is PSD
+  have hSandwich : IsPosSemidef (A * σ * A†) := hσ.sandwich A
+  -- Trace of PSD has non-negative real part
+  exact hSandwich.trace_re_nonneg
 
 /-- The projection formula: Q₀(A) = Tr(σA)·I is correct for normalized σ -/
 theorem gnsProjection_formula (σ A : Matrix (Fin n) (Fin n) ℂ) (hσ : σ.trace = 1) :

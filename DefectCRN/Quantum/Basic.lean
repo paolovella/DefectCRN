@@ -301,6 +301,122 @@ theorem IsPositiveDefinite.toPosSemidef {ρ : Matrix (Fin n) (Fin n) ℂ}
     · simp [hv, mulVec, dotProduct]
     · exact le_of_lt (h.2 v hv)
 
+/-- Standard basis vector: 1 at position i, 0 elsewhere -/
+def stdBasisVec (i : Fin n) : Fin n → ℂ := fun j => if j = i then 1 else 0
+
+/-- Diagonal entry equals quadratic form with standard basis vector -/
+theorem diag_eq_stdBasis_quadForm (M : Matrix (Fin n) (Fin n) ℂ) (i : Fin n) :
+    M i i = star (stdBasisVec i) ⬝ᵥ M.mulVec (stdBasisVec i) := by
+  simp only [stdBasisVec, dotProduct, mulVec, Pi.star_apply]
+  -- RHS: Σⱼ (star (if j = i then 1 else 0)) * Σₖ M j k * (if k = i then 1 else 0)
+  -- Inner sum: only k = i contributes
+  have h1 : ∀ j, (∑ k : Fin n, M j k * (if k = i then 1 else 0)) = M j i := by
+    intro j
+    rw [Finset.sum_eq_single i]
+    · simp only [eq_self_iff_true, ↓reduceIte, mul_one]
+    · intro k _ hki; simp only [hki, ↓reduceIte, mul_zero]
+    · intro hi; exact absurd (Finset.mem_univ i) hi
+  simp only [h1]
+  -- Now: Σⱼ (star (if j = i then 1 else 0)) * M j i
+  -- Only j = i contributes
+  rw [Finset.sum_eq_single i]
+  · simp only [eq_self_iff_true, ↓reduceIte, star_one, one_mul]
+  · intro j _ hji
+    simp only [hji, ↓reduceIte, star_zero, zero_mul]
+  · intro hi; exact absurd (Finset.mem_univ i) hi
+
+/-- For PSD matrices, diagonal entries have non-negative real part -/
+theorem IsPosSemidef.diag_re_nonneg {M : Matrix (Fin n) (Fin n) ℂ}
+    (hM : IsPosSemidef M) (i : Fin n) : 0 ≤ (M i i).re := by
+  have h := diag_eq_stdBasis_quadForm M i
+  rw [h]
+  exact hM.2 (stdBasisVec i)
+
+/-- For Hermitian matrices, diagonal entries are real (imaginary part is zero) -/
+theorem diag_im_zero_of_hermitian {M : Matrix (Fin n) (Fin n) ℂ}
+    (hM : M.IsHermitian) (i : Fin n) : (M i i).im = 0 := by
+  have h := congrFun (congrFun hM i) i
+  simp only [conjTranspose_apply] at h
+  -- h : star (M i i) = M i i, i.e., conj (M i i) = M i i
+  rw [Complex.ext_iff] at h
+  simp only [Complex.star_def, Complex.conj_re, Complex.conj_im] at h
+  -- h.2 : -(M i i).im = (M i i).im
+  linarith [h.2]
+
+/-- For Hermitian matrices, diagonal entries equal their real part -/
+theorem diag_eq_re_of_hermitian {M : Matrix (Fin n) (Fin n) ℂ}
+    (hM : M.IsHermitian) (i : Fin n) : M i i = (M i i).re := by
+  rw [Complex.ext_iff]
+  constructor
+  · rfl
+  · simp only [Complex.ofReal_re, Complex.ofReal_im]
+    exact diag_im_zero_of_hermitian hM i
+
+/-- Trace of PSD Hermitian matrix has non-negative real part -/
+theorem IsPosSemidef.trace_re_nonneg {M : Matrix (Fin n) (Fin n) ℂ}
+    (hM : IsPosSemidef M) : 0 ≤ M.trace.re := by
+  unfold Matrix.trace Matrix.diag
+  rw [Complex.re_sum]
+  apply Finset.sum_nonneg
+  intro i _
+  exact hM.diag_re_nonneg i
+
+/-- Trace of Hermitian matrix is real -/
+theorem trace_im_zero_of_hermitian {M : Matrix (Fin n) (Fin n) ℂ}
+    (hM : M.IsHermitian) : M.trace.im = 0 := by
+  unfold Matrix.trace Matrix.diag
+  rw [Complex.im_sum]
+  apply Finset.sum_eq_zero
+  intro i _
+  exact diag_im_zero_of_hermitian hM i
+
+/-- Adjoint property: v† (A w) = (A† v)† w -/
+theorem dotProduct_mulVec_adjoint (A : Matrix (Fin n) (Fin n) ℂ)
+    (v w : Fin n → ℂ) :
+    star v ⬝ᵥ (A *ᵥ w) = star (A† *ᵥ v) ⬝ᵥ w := by
+  simp only [dotProduct, mulVec, dagger, conjTranspose_apply, Pi.star_apply]
+  simp only [Finset.mul_sum, map_sum, starRingEnd_apply, star_mul', star_star]
+  rw [Finset.sum_comm]
+  congr 1
+  ext j
+  -- Goal: ∑ x, star (v x) * (A x j * w j) = star (∑ x, star (A x j) * v x) * w j
+  calc ∑ x : Fin n, star (v x) * (A x j * w j)
+      = ∑ x : Fin n, (star (v x) * A x j) * w j := by
+          apply Finset.sum_congr rfl; intro x _; ring
+    _ = (∑ x : Fin n, star (v x) * A x j) * w j := (Finset.sum_mul ..).symm
+    _ = (∑ x : Fin n, A x j * star (v x)) * w j := by
+          congr 1; apply Finset.sum_congr rfl; intro x _; ring
+    _ = star (∑ x : Fin n, star (A x j) * v x) * w j := by
+          congr 1; rw [star_sum]; apply Finset.sum_congr rfl; intro x _
+          simp only [star_mul', star_star]
+
+/-- Sandwich product preserves Hermitian property: (A * M * A†)† = A * M† * A† = A * M * A† -/
+theorem isHermitian_sandwich {M : Matrix (Fin n) (Fin n) ℂ}
+    (hM : M.IsHermitian) (A : Matrix (Fin n) (Fin n) ℂ) :
+    (A * M * A†).IsHermitian := by
+  simp only [Matrix.IsHermitian, conjTranspose_mul, conjTranspose_conjTranspose, mul_assoc]
+  rw [hM]
+
+/-- Sandwich product preserves PSD property: A * σ * A† is PSD when σ is PSD -/
+theorem IsPosSemidef.sandwich {σ : Matrix (Fin n) (Fin n) ℂ}
+    (hσ : IsPosSemidef σ) (A : Matrix (Fin n) (Fin n) ℂ) :
+    IsPosSemidef (A * σ * A†) := by
+  constructor
+  · exact isHermitian_sandwich hσ.1 A
+  · intro v
+    -- v† (A σ A†) v = (A† v)† σ (A† v)
+    -- Let w = A† v, then this is w† σ w ≥ 0
+    have h : star v ⬝ᵥ (A * σ * A†).mulVec v = star (A† *ᵥ v) ⬝ᵥ σ.mulVec (A† *ᵥ v) := by
+      -- First break down (A * σ * A†).mulVec v using mulVec_mulVec
+      simp only [Matrix.mul_assoc]
+      -- (A * (σ * A†)) *ᵥ v → A *ᵥ ((σ * A†) *ᵥ v) → A *ᵥ (σ *ᵥ (A† *ᵥ v))
+      rw [← mulVec_mulVec, ← mulVec_mulVec]
+      -- Now LHS is: star v ⬝ᵥ (A *ᵥ (σ *ᵥ (A† *ᵥ v)))
+      -- Apply adjoint property to get: star (A† *ᵥ v) ⬝ᵥ (σ *ᵥ (A† *ᵥ v))
+      rw [dotProduct_mulVec_adjoint]
+    rw [h]
+    exact hσ.2 (A† *ᵥ v)
+
 /-! ## Hermitian Decomposition -/
 
 /-- The Hermitian part of a matrix: (X + X†)/2 -/
