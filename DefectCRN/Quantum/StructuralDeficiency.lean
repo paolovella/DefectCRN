@@ -53,8 +53,29 @@ theorem matrixUnit_apply (i j : Fin n) (k l : Fin n) :
 
 /-- E_ij * E_kl = δ_jk · E_il (matrix unit multiplication rule).
     This is a standard property of matrix units. -/
-axiom matrixUnit_mul (i j k l : Fin n) :
-    matrixUnit i j * matrixUnit k l = if j = k then matrixUnit i l else 0
+theorem matrixUnit_mul (i j k l : Fin n) :
+    matrixUnit i j * matrixUnit k l = if j = k then matrixUnit i l else 0 := by
+  ext a b
+  simp only [Matrix.mul_apply, matrixUnit_apply]
+  by_cases hjk : j = k
+  · -- Case j = k: sum collapses to single term when m = j = k
+    subst hjk
+    simp only [eq_self_iff_true, and_true, true_and, ↓reduceIte]
+    rw [Finset.sum_eq_single_of_mem j (Finset.mem_univ j)]
+    · simp only [eq_self_iff_true, and_true, true_and, ↓reduceIte, one_mul]
+      -- (if a = i then 1 else 0) * (if b = l then 1 else 0) = if a = i ∧ b = l then 1 else 0
+      by_cases hai : a = i <;> by_cases hbl : b = l <;> simp [hai, hbl, matrixUnit_apply]
+    · intro m _ hm
+      simp only [hm, and_false, ↓reduceIte, zero_mul]
+  · -- Case j ≠ k: all terms in sum are zero
+    simp only [hjk, ↓reduceIte, Matrix.zero_apply]
+    apply Finset.sum_eq_zero
+    intro m _
+    by_cases hmj : m = j
+    · -- m = j but j ≠ k, so (E_kl)_mb requires m = k, contradiction
+      subst hmj
+      simp only [eq_self_iff_true, and_true, ↓reduceIte, one_mul, hjk, false_and, mul_zero]
+    · simp only [hmj, and_false, ↓reduceIte, zero_mul]
 
 /-- (E_ij)† = E_ji (conjugate transpose of matrix units).
     The conjugate transpose swaps indices since entries are 0 or 1 (real). -/
@@ -201,19 +222,31 @@ axiom structuralCommutant_le_commutant (L : Lindbladian n) (G : QuantumNetworkGr
     (hSupp : L.hasSupport G) :
     structuralCommutant G ≤ commutantSubmodule L
 
-/-- Structural deficiency is an upper bound on quantum deficiency.
+/-- Structural deficiency is a lower bound on quantum deficiency.
 
     For any specific parameter choice θ ∈ Θ(G):
-    δ_Q(θ) ≤ δ_Q^struct(G)
+    δ_Q^struct(G) ≤ δ_Q(θ)
 
-    This is because Comm(θ) ⊇ Comm_struct(G), so dim(Comm(θ)) ≥ dim(Comm_struct(G)).
+    This is because C_struct(G) ⊆ Comm(θ), so dim(C_struct(G)) ≤ dim(Comm(θ)).
 
     Mathematical justification:
     The structural commutant is the intersection of commutants over ALL parameter choices
-    with the given support, so it's contained in any specific commutant. -/
-axiom deficiency_le_structural (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    with the given support, so it's contained in any specific commutant.
+
+    Proof sketch:
+    1. structuralCommutant G ≤ commutantSubmodule L (by structuralCommutant_le_commutant)
+    2. dim(structuralCommutant G) ≤ dim(commutantSubmodule L)
+    3. dim(commutantSubmodule L) = dim(stationarySubspace L) (by commutant_dim_eq_stationary_dim)
+    4. structuralDeficiency G = dim(structural) - 1 ≤ dim(stationary) - 1 = quantumDeficiency L -/
+theorem structural_le_deficiency (L : Lindbladian n) (G : QuantumNetworkGraph n)
     (hSupp : L.hasSupport G) :
-    quantumDeficiency L ≤ structuralDeficiency G
+    structuralDeficiency G ≤ quantumDeficiency L := by
+  unfold structuralDeficiency quantumDeficiency
+  -- dim(structuralCommutant) ≤ dim(commutant) = dim(stationary)
+  have hLe := structuralCommutant_le_commutant L G hSupp
+  have hDimLe := Submodule.finrank_mono hLe
+  rw [commutant_dim_eq_stationary_dim] at hDimLe
+  omega
 
 /-! ### Structural Deficiency Formula -/
 
