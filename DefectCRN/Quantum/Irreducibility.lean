@@ -487,13 +487,33 @@ axiom kernel_projection_mem_commutant (L : Lindbladian n)
 
 /-- For Hermitian matrices, the quadratic form x† M x is real (im = 0).
     Proof: (x† M x)* = x† M† x = x† M x (using M = M†), so it equals its conjugate.
-
-    This is a foundational fact used in the spectral theory of Hermitian matrices.
-    The formal proof requires showing that the double sum is invariant under
-    conjugation, which follows from M = M†. -/
-axiom hermitian_quadForm_im_eq_zero {n : ℕ} [NeZero n]
+    A self-conjugate complex number has imaginary part zero. -/
+theorem hermitian_quadForm_im_eq_zero {n : ℕ} [NeZero n]
     {M : Matrix (Fin n) (Fin n) ℂ} (hH : M.IsHermitian)
-    (x : Fin n → ℂ) : Complex.im (star x ⬝ᵥ M.mulVec x) = 0
+    (x : Fin n → ℂ) : Complex.im (star x ⬝ᵥ M.mulVec x) = 0 := by
+  -- Show that x†Mx = star(x†Mx), which implies Im = 0
+  -- Use the same pattern as in Mathlib's conj_symm for inner products
+  have hSelfConj : star x ⬝ᵥ M.mulVec x = star (star x ⬝ᵥ M.mulVec x) := by
+    -- star (star x ⬝ᵥ M *ᵥ x) = star (M *ᵥ x) ⬝ᵥ star (star x)  [star_dotProduct backwards]
+    --                        = star (M *ᵥ x) ⬝ᵥ x               [star_star]
+    --                        = (star x ᵥ* Mᴴ) ⬝ᵥ x              [star_mulVec]
+    --                        = star x ⬝ᵥ Mᴴ *ᵥ x                [dotProduct_mulVec backwards]
+    --                        = star x ⬝ᵥ M *ᵥ x                 [hH.eq: Mᴴ = M]
+    -- Transform RHS: star (star x ⬝ᵥ M *ᵥ x)
+    --              = star (M *ᵥ x) ⬝ᵥ star (star x)  [star_dotProduct]
+    --              = star (M *ᵥ x) ⬝ᵥ x              [star_star]
+    --              = (star x ᵥ* Mᴴ) ⬝ᵥ x             [star_mulVec]
+    --              = star x ⬝ᵥ Mᴴ *ᵥ x               [dotProduct_mulVec backwards]
+    --              = star x ⬝ᵥ M *ᵥ x                [hH.eq]
+    conv_rhs =>
+      rw [Matrix.star_dotProduct, star_star, Matrix.star_mulVec]
+    -- Now RHS = (star x ᵥ* Mᴴ) ⬝ᵥ x
+    rw [← Matrix.dotProduct_mulVec, hH.eq]
+  -- A self-conjugate complex number has Im = 0
+  have := congrArg Complex.im hSelfConj
+  simp only [Complex.star_def, Complex.conj_im] at this
+  -- this : im = -im, so im = 0
+  linarith
 
 /-- Our IsPosSemidef implies Mathlib's Matrix.PosSemidef -/
 theorem isPosSemidef_to_matrixPosSemidef {ρ : Matrix (Fin n) (Fin n) ℂ}
@@ -521,20 +541,52 @@ theorem posSemidef_eigenvalues_nonneg {ρ : Matrix (Fin n) (Fin n) ℂ}
 
 /-- For Hermitian matrices with all positive eigenvalues, the quadratic form is
     strictly positive for nonzero vectors.
-    This is the spectral characterization of positive definiteness.
 
-    Proof outline:
-    1. Use spectral theorem: ρ = U D U† where D = diag(λᵢ) has positive entries.
-    2. For any nonzero v, let w = U†v (also nonzero since U is unitary).
-    3. Then v† ρ v = w† D w = Σᵢ λᵢ |wᵢ|².
-    4. Since all λᵢ > 0 and some |wᵢ|² > 0, we have v† ρ v > 0.
+    Proof strategy:
+    1. First show that PosSemidef (via eigenvalues_nonneg)
+    2. Show det > 0 (product of positive eigenvalues)
+    3. PosSemidef + det ≠ 0 implies PosDef (matrix is invertible)
 
-    The formal proof requires manipulating matrix-vector products with the
-    spectral decomposition, which involves careful index manipulation. -/
-axiom positive_eigenvalues_implies_pos_def {n : ℕ} [NeZero n]
-    {ρ : Matrix (Fin n) (Fin n) ℂ}
+    This is the converse of Matrix.PosDef.eigenvalues_pos. -/
+theorem positive_eigenvalues_implies_pos_def {ρ : Matrix (Fin n) (Fin n) ℂ}
     (hHerm : ρ.IsHermitian) (hall_pos : ∀ k : Fin n, 0 < hHerm.eigenvalues k) :
-    IsPositiveDefinite ρ
+    IsPositiveDefinite ρ := by
+  classical
+  -- First, all eigenvalues are nonnegative (since they're positive)
+  have hall_nonneg : ∀ k : Fin n, 0 ≤ hHerm.eigenvalues k := fun k => le_of_lt (hall_pos k)
+  -- So ρ is positive semidefinite
+  have hPSD : ρ.PosSemidef := hHerm.posSemidef_of_eigenvalues_nonneg hall_nonneg
+  -- The determinant is positive (product of positive eigenvalues)
+  have hDetPos : 0 < ρ.det := by
+    rw [hHerm.det_eq_prod_eigenvalues]
+    apply Finset.prod_pos
+    intro i _
+    exact RCLike.ofReal_pos.mpr (hall_pos i)
+  -- So ρ is invertible
+  have hIsUnit : IsUnit ρ := isUnit_iff_isUnit_det _ |>.mpr hDetPos.ne'.isUnit
+  -- For PSD + invertible, the quadratic form is strictly positive for nonzero vectors
+  -- This is because ker(ρ) = {0} for invertible ρ
+  have hPosDef : ρ.PosDef := by
+    refine ⟨hHerm, fun v hv => ?_⟩
+    -- If v ≠ 0 and ρ is invertible, then ρv ≠ 0
+    have hinj := Matrix.mulVec_injective_iff_isUnit.mpr hIsUnit
+    have hρv_ne : ρ *ᵥ v ≠ 0 := by
+      intro h
+      have h0 : ρ *ᵥ 0 = 0 := Matrix.mulVec_zero _
+      have := hinj (h.trans h0.symm)
+      exact hv this
+    -- star v ⬝ᵥ ρ *ᵥ v ≥ 0 by PSD, and = 0 iff ρv = 0
+    -- For Hermitian ρ, the quadratic form is real, so we can compare
+    have hge := hPSD.2 v
+    -- Since ρv ≠ 0 and ρ is Hermitian PSD, we have strict inequality
+    -- The key: dotProduct_mulVec_zero_iff tells us star v ⬝ᵥ ρ *ᵥ v = 0 ↔ ρ *ᵥ v = 0
+    cases' (hge.lt_or_eq) with hpos heq
+    · exact hpos
+    · exfalso
+      have := hPSD.dotProduct_mulVec_zero_iff v |>.mp heq.symm
+      exact hρv_ne this
+  -- Convert to our definition
+  exact ⟨hHerm, fun v hv => hPosDef.re_dotProduct_pos hv⟩
 
 /-- For primitive Lindbladians, any stationary density matrix is faithful.
 
