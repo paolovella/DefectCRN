@@ -200,11 +200,11 @@ theorem sigma_plus_commutator (X : Matrix (Fin 2) (Fin 2) ℂ) :
       exact h.symm
     exact this.symm
 
-/-- For γ > 0, the two-level system is primitive -/
-theorem twoLevel_primitive (ω γ : ℝ) (hγ : γ > 0) :
-    IsPrimitive (twoLevelL ω γ) := by
-  -- IsPrimitive means hasTrivialCommutant
-  unfold IsPrimitive hasTrivialCommutant commutantSet IsInCommutant twoLevelL
+/-- For γ > 0, the two-level system is ergodic -/
+theorem twoLevel_ergodic (ω γ : ℝ) (hγ : γ > 0) :
+    IsErgodic (twoLevelL ω γ) := by
+  -- IsErgodic means hasTrivialCommutant
+  unfold IsErgodic hasTrivialCommutant commutantSet IsInCommutant twoLevelL
   simp only [Set.mem_setOf_eq, List.mem_singleton]
   intro X ⟨_, hCommL, hCommLdag⟩
   -- From [X, decayOp γ] = 0, extract [X, σ⁻] = 0
@@ -241,7 +241,7 @@ theorem twoLevel_primitive (ω γ : ℝ) (hγ : γ > 0) :
 /-- Quantum deficiency is zero for γ > 0 -/
 theorem twoLevel_deficiency_zero (ω γ : ℝ) (hγ : γ > 0) :
     quantumDeficiency (twoLevelL ω γ) = 0 := by
-  rw [deficiency_zero_iff_primitive]
-  exact twoLevel_primitive ω γ hγ
+  rw [deficiency_zero_iff_ergodic]
+  exact twoLevel_ergodic ω γ hγ
 
 end DefectCRN.Quantum.Examples.TwoLevel

@@ -218,6 +218,53 @@ theorem trace_anticommutator (A B : Matrix (Fin n) (Fin n) ℂ) [DecidableEq (Fi
   rw [trace_add, trace_mul_comm]
   ring
 
+/-! ## Trace Duality Lemmas -/
+
+/-- Trace duality for commutator: Tr(A · [H,ρ]) = -Tr([H,A] · ρ) -/
+theorem trace_mul_commutator_duality (A H ρ : Matrix (Fin n) (Fin n) ℂ) [DecidableEq (Fin n)] :
+    (A * ⟦H, ρ⟧).trace = -(⟦H, A⟧ * ρ).trace := by
+  simp only [commutator]
+  rw [Matrix.mul_sub, trace_sub, Matrix.sub_mul, trace_sub]
+  -- LHS: (A * (H * ρ)).trace - (A * (ρ * H)).trace
+  -- RHS: -((H * A) * ρ).trace + ((A * H) * ρ).trace
+  rw [← Matrix.mul_assoc A H ρ, ← Matrix.mul_assoc A ρ H]
+  -- (A * ρ * H).trace = (H * A * ρ).trace by trace_mul_cycle
+  have h1 : (A * ρ * H).trace = (H * A * ρ).trace := Matrix.trace_mul_cycle A ρ H
+  rw [h1]
+  ring
+
+/-- Trace duality for sandwich term: Tr(A · (LρL†)) = Tr((L†AL) · ρ) -/
+theorem trace_mul_sandwich_duality (A L ρ : Matrix (Fin n) (Fin n) ℂ) [DecidableEq (Fin n)] :
+    (A * (L * ρ * L†)).trace = (L† * A * L * ρ).trace := by
+  -- Note: L * ρ * L† is (L * ρ) * L† by left associativity
+  -- We'll use simp with mul_assoc to normalize, then apply trace_mul_cycle
+  have key : (A * (L * ρ * L†)).trace = ((A * L) * ρ * L†).trace := by
+    congr 1
+    -- A * (L * ρ * L†) = A * ((L * ρ) * L†)  -- parsing
+    --                  = (A * (L * ρ)) * L†  -- mul_assoc
+    --                  = ((A * L) * ρ) * L†  -- mul_assoc
+    simp only [Matrix.mul_assoc]
+  rw [key]
+  -- Apply trace_mul_cycle: (X * Y * Z).trace = (Z * X * Y).trace
+  have h2 : ((A * L) * ρ * L†).trace = (L† * (A * L) * ρ).trace :=
+    Matrix.trace_mul_cycle (A * L) ρ L†
+  rw [h2]
+  -- Flatten L† * (A * L) to L† * A * L
+  simp only [Matrix.mul_assoc]
+
+/-- Trace duality for anticommutator: Tr(A · {M,ρ}) = Tr({M,A} · ρ) -/
+theorem trace_mul_anticommutator_duality (A M ρ : Matrix (Fin n) (Fin n) ℂ) [DecidableEq (Fin n)] :
+    (A * ⟨M, ρ⟩₊).trace = (⟨M, A⟩₊ * ρ).trace := by
+  simp only [anticommutator]
+  rw [Matrix.mul_add, trace_add, Matrix.add_mul, trace_add]
+  -- LHS: (A * (M * ρ)).trace + (A * (ρ * M)).trace
+  -- RHS: ((M * A) * ρ).trace + ((A * M) * ρ).trace
+  rw [← Matrix.mul_assoc A M ρ, ← Matrix.mul_assoc A ρ M]
+  -- Now: (A * M * ρ).trace + (A * ρ * M).trace = (M * A * ρ).trace + (A * M * ρ).trace
+  -- Need: (A * ρ * M).trace = (M * A * ρ).trace
+  have h : (A * ρ * M).trace = (M * A * ρ).trace := Matrix.trace_mul_cycle A ρ M
+  rw [h, add_comm]
+
 /-! ## Superoperator Basics -/
 
 /-- A superoperator is a linear map on matrices -/

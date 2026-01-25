@@ -332,23 +332,139 @@ def pureDissipation (Ls : List (Matrix (Fin n) (Fin n) ℂ)) : Lindbladian n whe
 
 /-! ## Dual (Heisenberg Picture) -/
 
+/-- Single dual dissipator term: L†AL - ½{L†L, A} -/
+noncomputable def singleDualDissipator (Lk A : Matrix (Fin n) (Fin n) ℂ) :
+    Matrix (Fin n) (Fin n) ℂ :=
+  Lk† * A * Lk - (1/2 : ℂ) • ⟨Lk† * Lk, A⟩₊
+
+/-- Single dual dissipator is additive in A -/
+theorem singleDualDissipator_add (Lk A B : Matrix (Fin n) (Fin n) ℂ) :
+    singleDualDissipator Lk (A + B) = singleDualDissipator Lk A + singleDualDissipator Lk B := by
+  simp only [singleDualDissipator, anticommutator]
+  simp only [mul_add, add_mul, smul_add]
+  abel
+
+/-- Single dual dissipator respects scalar multiplication -/
+theorem singleDualDissipator_smul (c : ℂ) (Lk A : Matrix (Fin n) (Fin n) ℂ) :
+    singleDualDissipator Lk (c • A) = c • singleDualDissipator Lk A := by
+  simp only [singleDualDissipator, anticommutator]
+  simp only [Matrix.mul_smul, Matrix.smul_mul, smul_sub, smul_add]
+  simp only [smul_comm c (1/2 : ℂ)]
+
+/-- Helper: fold of dual dissipators is additive -/
+theorem dualDissipator_fold_add (Ls : List (Matrix (Fin n) (Fin n) ℂ))
+    (A B : Matrix (Fin n) (Fin n) ℂ) :
+    Ls.foldl (fun acc Lk => acc + singleDualDissipator Lk (A + B)) 0 =
+    Ls.foldl (fun acc Lk => acc + singleDualDissipator Lk A) 0 +
+    Ls.foldl (fun acc Lk => acc + singleDualDissipator Lk B) 0 := by
+  exact fold_add_fun
+    (fun Lk => singleDualDissipator Lk (A + B))
+    (fun Lk => singleDualDissipator Lk A)
+    (fun Lk => singleDualDissipator Lk B)
+    (fun Lk => singleDualDissipator_add Lk A B)
+    Ls
+
+/-- Helper: fold of dual dissipators respects scalar mult -/
+theorem dualDissipator_fold_smul (c : ℂ) (Ls : List (Matrix (Fin n) (Fin n) ℂ))
+    (A : Matrix (Fin n) (Fin n) ℂ) :
+    Ls.foldl (fun acc Lk => acc + singleDualDissipator Lk (c • A)) 0 =
+    c • Ls.foldl (fun acc Lk => acc + singleDualDissipator Lk A) 0 := by
+  have heq : (fun acc Lk => acc + singleDualDissipator Lk (c • A)) =
+             (fun acc Lk => acc + c • singleDualDissipator Lk A) := by
+    ext acc Lk
+    rw [singleDualDissipator_smul]
+  rw [heq]
+  exact fold_smul_fun c (fun Lk => singleDualDissipator Lk A) Ls
+
+/-! ## Duality Lemmas -/
+
+/-- Single dissipator duality: Tr(A · singleDissipator(Lk, ρ)) = Tr(singleDualDissipator(Lk, A) · ρ) -/
+theorem singleDissipator_duality [DecidableEq (Fin n)] (Lk A ρ : Matrix (Fin n) (Fin n) ℂ) :
+    (A * singleDissipator Lk ρ).trace = (singleDualDissipator Lk A * ρ).trace := by
+  simp only [singleDissipator, singleDualDissipator]
+  rw [Matrix.mul_sub, Matrix.sub_mul, trace_sub, trace_sub]
+  -- Sandwich term: Tr(A · (Lk * ρ * Lk†)) = Tr((Lk† * A * Lk) · ρ)
+  have h_sandwich : (A * (Lk * ρ * Lk†)).trace = (Lk† * A * Lk * ρ).trace :=
+    trace_mul_sandwich_duality A Lk ρ
+  -- Anticommutator term (scaled): Tr(A · ½{M, ρ}) = Tr(½{M, A} · ρ)
+  -- where M = Lk† * Lk
+  have h_anti : (A * ((1/2 : ℂ) • ⟨Lk† * Lk, ρ⟩₊)).trace =
+                 (((1/2 : ℂ) • ⟨Lk† * Lk, A⟩₊) * ρ).trace := by
+    rw [Matrix.mul_smul, trace_smul, Matrix.smul_mul, trace_smul]
+    congr 1
+    exact trace_mul_anticommutator_duality A (Lk† * Lk) ρ
+  rw [h_sandwich, h_anti]
+
+/-- Helper: duality for fold of dissipators.
+    Tr(A · Σₖ singleDissipator(Lk, ρ)) = Tr(Σₖ singleDualDissipator(Lk, A) · ρ) -/
+theorem dissipator_fold_duality [DecidableEq (Fin n)] (Ls : List (Matrix (Fin n) (Fin n) ℂ))
+    (A ρ : Matrix (Fin n) (Fin n) ℂ) :
+    (A * Ls.foldl (fun acc Lk => acc + singleDissipator Lk ρ) 0).trace =
+    (Ls.foldl (fun acc Lk => acc + singleDualDissipator Lk A) 0 * ρ).trace := by
+  induction Ls with
+  | nil => simp
+  | cons Lk Ls ih =>
+    simp only [List.foldl_cons, zero_add]
+    -- LHS: (A * (acc + singleDissipator Lk ρ)).trace where acc = fold of Ls
+    rw [fold_add_init (fun Lk => singleDissipator Lk ρ) (singleDissipator Lk ρ) Ls]
+    rw [fold_add_init (fun Lk => singleDualDissipator Lk A) (singleDualDissipator Lk A) Ls]
+    -- Now: (A * (singleDissipator Lk ρ + fold)).trace = ((singleDualDissipator Lk A + fold) * ρ).trace
+    rw [Matrix.mul_add, trace_add, Matrix.add_mul, trace_add]
+    rw [ih, singleDissipator_duality]
+
 /-- The dual Lindbladian L* acting on observables (Heisenberg picture).
     L*(A) = i[H, A] + Σₖ(Lₖ†ALₖ - ½{Lₖ†Lₖ, A})
 
     Note: The sign of the Hamiltonian term is flipped compared to Schrödinger. -/
 noncomputable def dualApply (A : Matrix (Fin n) (Fin n) ℂ) : Matrix (Fin n) (Fin n) ℂ :=
   Complex.I • ⟦L.hamiltonian, A⟧ +
-  L.jumpOps.foldl (fun acc Lk => acc + (Lk† * A * Lk - (1/2 : ℂ) • ⟨Lk† * Lk, A⟩₊)) 0
+  L.jumpOps.foldl (fun acc Lk => acc + singleDualDissipator Lk A) 0
+
+/-- Dual Lindbladian is additive -/
+theorem dualApply_add (A B : Matrix (Fin n) (Fin n) ℂ) :
+    L.dualApply (A + B) = L.dualApply A + L.dualApply B := by
+  simp only [dualApply]
+  rw [commutator_add_right, dualDissipator_fold_add, smul_add]
+  abel
+
+/-- Dual Lindbladian respects scalar multiplication -/
+theorem dualApply_smul (c : ℂ) (A : Matrix (Fin n) (Fin n) ℂ) :
+    L.dualApply (c • A) = c • L.dualApply A := by
+  simp only [dualApply]
+  rw [commutator_smul_right, dualDissipator_fold_smul, smul_comm, smul_add]
 
 /-- The dual as a linear map -/
 noncomputable def dualLinearMap : Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] Matrix (Fin n) (Fin n) ℂ where
   toFun := L.dualApply
-  map_add' := by intro A B; simp only [dualApply]; sorry
-  map_smul' := by intro c A; simp only [dualApply]; sorry
+  map_add' := L.dualApply_add
+  map_smul' := L.dualApply_smul
 
-/-- Duality relation: Tr(A · L(ρ)) = Tr(L*(A) · ρ) -/
-axiom duality_relation [DecidableEq (Fin n)] (A ρ : Matrix (Fin n) (Fin n) ℂ) :
-    (A * L.apply ρ).trace = (L.dualApply A * ρ).trace
+/-- Duality relation: Tr(A · L(ρ)) = Tr(L*(A) · ρ)
+    This is the fundamental relation between Schrödinger and Heisenberg pictures. -/
+theorem duality_relation [DecidableEq (Fin n)] (A ρ : Matrix (Fin n) (Fin n) ℂ) :
+    (A * L.apply ρ).trace = (L.dualApply A * ρ).trace := by
+  simp only [apply, unitaryPart, dissipator, dualApply]
+  -- LHS: Tr(A * (-I•[H,ρ] + dissipator))
+  -- RHS: Tr((I•[H,A] + dualDissipator) * ρ)
+  rw [Matrix.mul_add, trace_add, Matrix.add_mul, trace_add]
+  -- Need: Tr(A * (-I•[H,ρ])) = Tr((I•[H,A]) * ρ) AND
+  --       Tr(A * dissipator(ρ)) = Tr(dualDissipator(A) * ρ)
+
+  -- Unitary part duality
+  have h_unitary : (A * (-Complex.I • ⟦L.hamiltonian, ρ⟧)).trace =
+                   ((Complex.I • ⟦L.hamiltonian, A⟧) * ρ).trace := by
+    rw [Matrix.mul_smul, trace_smul, Matrix.smul_mul, trace_smul]
+    -- Need: -I * Tr(A * [H,ρ]) = I * Tr([H,A] * ρ)
+    -- By trace_mul_commutator_duality: Tr(A * [H,ρ]) = -Tr([H,A] * ρ)
+    have h := trace_mul_commutator_duality A L.hamiltonian ρ
+    rw [h]
+    -- Now: -I * (-(⟦L.hamiltonian, A⟧ * ρ).trace) = I * (⟦L.hamiltonian, A⟧ * ρ).trace
+    simp only [neg_smul, smul_neg, neg_neg]
+
+  -- Dissipator part duality
+  have h_dissipator := dissipator_fold_duality L.jumpOps A ρ
+
+  rw [h_unitary, h_dissipator]
 
 /-- The spectrum of the dual Lindbladian (for spectral analysis).
     This consists of eigenvalues of L* viewed as a linear map on M_n(ℂ). -/

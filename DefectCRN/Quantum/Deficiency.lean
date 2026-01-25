@@ -41,11 +41,11 @@ theorem deficiency_zero_iff_stationary_dim_one (L : Lindbladian n)
   · intro h
     simp only [h, Nat.sub_self]
 
-/-- δ_Q = 0 implies primitive.
+/-- δ_Q = 0 implies ergodic.
     The proof uses the fundamental result that dim(commutant) = dim(stationary subspace).
     If stationary subspace is 1-dimensional, commutant is 1-dimensional, hence trivial. -/
-theorem deficiency_zero_implies_primitive (L : Lindbladian n)
-    (h : quantumDeficiency L = 0) : IsPrimitive L := by
+theorem deficiency_zero_implies_ergodic (L : Lindbladian n)
+    (h : quantumDeficiency L = 0) : IsErgodic L := by
   -- δ_Q = 0 means dim(stationary) = 1
   have hPos := stationary_subspace_nontrivial L
   have hDim : Module.finrank ℂ L.stationarySubspace = 1 := by
@@ -58,16 +58,16 @@ theorem deficiency_zero_implies_primitive (L : Lindbladian n)
   -- 1-dimensional commutant = trivial commutant (only scalars)
   exact commutant_dim_one_implies_trivial L hCommDim
 
-/-- Primitive implies δ_Q = 0 -/
-theorem primitive_implies_deficiency_zero (L : Lindbladian n)
-    (h : IsPrimitive L) : quantumDeficiency L = 0 := by
-  have hDim := primitive_stationary_dim_one L h
+/-- Ergodic implies δ_Q = 0 -/
+theorem ergodic_implies_deficiency_zero (L : Lindbladian n)
+    (h : IsErgodic L) : quantumDeficiency L = 0 := by
+  have hDim := ergodic_stationary_dim_one L h
   unfold quantumDeficiency
   simp only [hDim, Nat.sub_self]
 
-/-- δ_Q = 0 ⟺ primitive -/
-theorem deficiency_zero_iff_primitive (L : Lindbladian n) :
-    quantumDeficiency L = 0 ↔ IsPrimitive L :=
-  ⟨deficiency_zero_implies_primitive L, primitive_implies_deficiency_zero L⟩
+/-- δ_Q = 0 ⟺ ergodic -/
+theorem deficiency_zero_iff_ergodic (L : Lindbladian n) :
+    quantumDeficiency L = 0 ↔ IsErgodic L :=
+  ⟨deficiency_zero_implies_ergodic L, ergodic_implies_deficiency_zero L⟩
 
 end DefectCRN.Quantum

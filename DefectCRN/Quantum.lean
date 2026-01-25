@@ -9,9 +9,11 @@ import DefectCRN.Quantum.StationaryState
 import DefectCRN.Quantum.Algebra
 import DefectCRN.Quantum.Irreducibility
 import DefectCRN.Quantum.Deficiency
+import DefectCRN.Quantum.StructuralDeficiency
 import DefectCRN.Quantum.Frigerio
 import DefectCRN.Quantum.QuantumDZT
 import DefectCRN.Quantum.Examples.TwoLevel
+import DefectCRN.Quantum.Examples.AccidentalSymmetry
 
 /-!
 # Quantum Chemical Reaction Network Theory
@@ -34,21 +36,23 @@ This is the quantum analog of the classical master equation for chemical kinetic
 * `Lindbladian.lean` - The Lindblad generator structure
 * `StationaryState.lean` - Stationary states and their properties
 * `Algebra.lean` - Lindblad algebra and commutant
-* `Irreducibility.lean` - Primitive/irreducible semigroups
+* `Irreducibility.lean` - Ergodic/irreducible semigroups
 * `Deficiency.lean` - Quantum deficiency δ_Q
+* `StructuralDeficiency.lean` - Structural deficiency δ_Q^struct (parameter-independent)
 * `Frigerio.lean` - Frigerio's uniqueness theorem
 * `QuantumDZT.lean` - **Quantum Deficiency Zero Theorem** (main contribution)
 
 ## Main Results
 
-1. **Frigerio's Theorem:** Primitive ⟹ unique faithful stationary state
-2. **Quantum DZT:** δ_Q = 0 ⟹ unique faithful stationary state
-3. **Equivalence:** δ_Q = 0 ⟺ primitive ⟺ trivial commutant
+1. **Frigerio's Theorem:** Ergodic ⟹ unique stationary state
+2. **Quantum DZT:** δ_Q = 0 ⟹ unique stationary state (faithful under QDB)
+3. **Equivalence:** δ_Q = 0 ⟺ ergodic ⟺ trivial commutant
+4. **Structural Formula:** δ_Q^struct(G) = k - 1 (k = number of SCCs)
 
 ## Examples
 
-* `TwoLevel.lean` - Two-level system with spontaneous decay
-* More examples to come: FMO complex, radical pair mechanism
+* `TwoLevel.lean` - Two-level system with spontaneous decay (ergodic, δ_Q = 0)
+* `AccidentalSymmetry.lean` - Aligned operators creating hidden symmetry (δ_Q = 1 > δ_Q^struct = 0)
 
 ## References
 

@@ -12,7 +12,11 @@ import Mathlib.LinearAlgebra.Matrix.PosDef
 import Mathlib.LinearAlgebra.Lagrange
 
 /-!
-# Irreducibility (Primitivity) of Quantum Markov Semigroups
+# Ergodicity and Irreducibility of Quantum Markov Semigroups
+
+Terminology note: We use "ergodic" to mean Fix(L*) = ℂI (equivalently, trivial commutant).
+In some QMS literature, "primitive" requires aperiodicity in addition to irreducibility.
+We follow the convention of Carlen-Maas 2017 and use "ergodic" for this property.
 -/
 
 set_option linter.unusedVariables false
@@ -25,8 +29,13 @@ open Matrix
 
 variable {n : ℕ} [NeZero n]
 
-/-- A Lindbladian is primitive if its commutant is trivial -/
-def IsPrimitive (L : Lindbladian n) : Prop :=
+/-- A Lindbladian is ergodic if its commutant is trivial (Fix(L*) = ℂI).
+
+    Equivalently: the Lindblad algebra generates all of M_n(ℂ).
+
+    Terminology: We use "ergodic" rather than "primitive" to avoid confusion
+    with the QMS literature where "primitive" sometimes requires aperiodicity. -/
+def IsErgodic (L : Lindbladian n) : Prop :=
   hasTrivialCommutant L
 
 /-- A Lindbladian is irreducible if no non-trivial projection commutes with it -/
@@ -34,8 +43,8 @@ def IsIrreducible (L : Lindbladian n) : Prop :=
   ∀ P : Matrix (Fin n) (Fin n) ℂ,
     P * P = P → P.IsHermitian → IsInCommutant L P → (P = 0 ∨ P = 1)
 
-/-- Primitive implies irreducible -/
-theorem primitive_implies_irreducible (L : Lindbladian n) (h : IsPrimitive L) :
+/-- Ergodic implies irreducible -/
+theorem ergodic_implies_irreducible (L : Lindbladian n) (h : IsErgodic L) :
     IsIrreducible L := by
   intro P hProj hHerm hComm
   -- P is in the commutant, so P = c • I for some c
@@ -425,16 +434,16 @@ theorem hermitian_commutant_is_scalar (L : Lindbladian n) (h : IsIrreducible L)
     · exact absurd hP0 hP_ne_zero
     · exact absurd hP1 hP_ne_one
 
-/-- Irreducible implies primitive.
+/-- Irreducible implies ergodic.
 
     Proof:
     - Take any X in commutant
     - Decompose X = H + iK where H, K are Hermitian (both in commutant)
     - By hermitian_commutant_is_scalar, H = c·I and K = d·I for some c, d ∈ ℂ
     - Therefore X = (c + i·d)·I is scalar -/
-theorem irreducible_implies_primitive (L : Lindbladian n) (h : IsIrreducible L) :
-    IsPrimitive L := by
-  unfold IsPrimitive hasTrivialCommutant
+theorem irreducible_implies_ergodic (L : Lindbladian n) (h : IsIrreducible L) :
+    IsErgodic L := by
+  unfold IsErgodic hasTrivialCommutant
   intro X hX
   -- X = H + i·K where H, K are Hermitian and in commutant
   have hXdecomp := hermitian_decomposition X
@@ -452,10 +461,10 @@ theorem irreducible_implies_primitive (L : Lindbladian n) (h : IsIrreducible L) 
   simp only [smul_smul]
   rw [← add_smul, add_comm]
 
-/-- Primitive and irreducible are equivalent -/
-theorem primitive_iff_irreducible (L : Lindbladian n) :
-    IsPrimitive L ↔ IsIrreducible L :=
-  ⟨primitive_implies_irreducible L, irreducible_implies_primitive L⟩
+/-- Ergodic and irreducible are equivalent -/
+theorem ergodic_iff_irreducible (L : Lindbladian n) :
+    IsErgodic L ↔ IsIrreducible L :=
+  ⟨ergodic_implies_irreducible L, irreducible_implies_ergodic L⟩
 
 /- NOTE ON FRIGERIO'S LEMMA:
 
@@ -465,7 +474,7 @@ theorem primitive_iff_irreducible (L : Lindbladian n) :
       L = √γ |0⟩⟨1|,  H = ω|1⟩⟨1|
 
     This system:
-    - IS primitive (commutant = ℂI)
+    - IS ergodic (commutant = ℂI)
     - Has unique stationary state ρ = |0⟩⟨0| (rank 1, NOT faithful)
     - The kernel projection P = |1⟩⟨1| is NOT in the commutant
       (since [P, L†] = [|1⟩⟨1|, |1⟩⟨0|] = |1⟩⟨0| ≠ 0)
@@ -475,7 +484,7 @@ theorem primitive_iff_irreducible (L : Lindbladian n) :
     - This does NOT imply all stationary states are faithful
 
     The correct statement is:
-    - Primitive ⟹ unique stationary state (Theorem: primitive_unique_stationary_density)
+    - Ergodic ⟹ unique stationary state (Theorem: ergodic_unique_stationary_density)
     - The unique stationary state may or may not be faithful
     - Faithfulness requires additional conditions (e.g., detailed balance) -/
 
@@ -582,19 +591,19 @@ theorem positive_eigenvalues_implies_pos_def {ρ : Matrix (Fin n) (Fin n) ℂ}
   -- Convert to our definition
   exact ⟨hHerm, fun v hv => hPosDef.re_dotProduct_pos hv⟩
 
-/- NOTE: The theorem "primitive_stationary_is_faithful" was REMOVED because it is FALSE.
+/- NOTE: The theorem "ergodic_stationary_is_faithful" was REMOVED because it is FALSE.
 
     COUNTEREXAMPLE: Two-level amplitude damping
       L = √γ |0⟩⟨1|,  H = ω|1⟩⟨1|
 
-    This system is primitive (commutant = ℂI) but the unique stationary state
+    This system is ergodic (commutant = ℂI) but the unique stationary state
     is |0⟩⟨0|, which is rank-1 (NOT faithful).
 
     The error in the original proof was assuming kernel_projection_mem_commutant,
     which is also false in general.
 
-    CORRECT STATEMENT: Primitive ⟹ unique stationary state (may or may not be faithful)
-    See: primitive_unique_stationary_density below. -/
+    CORRECT STATEMENT: Ergodic ⟹ unique stationary state (may or may not be faithful)
+    See: ergodic_unique_stationary_density below. -/
 
 /-- In a 1-dimensional subspace, elements with equal nonzero trace are equal. -/
 theorem eq_of_mem_finrank_one_trace_eq {S : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ)}
@@ -633,21 +642,21 @@ theorem eq_of_mem_finrank_one_trace_eq {S : Submodule ℂ (Matrix (Fin n) (Fin n
   -- Therefore x = y
   rw [← hcx', ← hcy', hcxcy]
 
-/-- Primitive implies 1-dimensional stationary space -/
-theorem primitive_stationary_dim_one (L : Lindbladian n) (h : IsPrimitive L) :
+/-- Ergodic implies 1-dimensional stationary space -/
+theorem ergodic_stationary_dim_one (L : Lindbladian n) (h : IsErgodic L) :
     Module.finrank ℂ L.stationarySubspace = 1 := by
-  -- Primitive means trivial commutant
+  -- Ergodic means trivial commutant
   -- By finrank_trivialCommutant, dim(commutant) = 1
   -- By commutant_dim_eq_stationary_dim, dim(stationary) = dim(commutant) = 1
   have hCommDim := finrank_trivialCommutant L h
   rw [← commutant_dim_eq_stationary_dim L]
   exact hCommDim
 
-/-- Primitive implies unique stationary density matrix.
-    The full proof uses Frigerio's theorem (see `primitive_unique_stationary_density'`
+/-- Ergodic implies unique stationary density matrix.
+    The full proof uses Frigerio's theorem (see `ergodic_unique_stationary_density'`
     in Frigerio.lean). Here we note that uniqueness also follows from dim = 1
     once existence is established. -/
-theorem primitive_unique_stationary_density (L : Lindbladian n) (h : IsPrimitive L) :
+theorem ergodic_unique_stationary_density (L : Lindbladian n) (h : IsErgodic L) :
     ∃! ρ : Matrix (Fin n) (Fin n) ℂ,
       ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ := by
   -- Existence from exists_stationary_state
@@ -660,7 +669,7 @@ theorem primitive_unique_stationary_density (L : Lindbladian n) (h : IsPrimitive
   have hρMem : ρ ∈ L.stationarySubspace := L.mem_stationarySubspace_iff ρ |>.mpr hρStat
   have hρ₀Mem : ρ₀ ∈ L.stationarySubspace := L.mem_stationarySubspace_iff ρ₀ |>.mpr hρ₀Stat
   -- dim(stationarySubspace) = 1
-  have hDim := primitive_stationary_dim_one L h
+  have hDim := ergodic_stationary_dim_one L h
   -- Apply the helper lemma
   exact eq_of_mem_finrank_one_trace_eq hDim ρ ρ₀ hρMem hρ₀Mem hρHerm hρ₀Herm hρTr hρ₀Tr
 

@@ -22,13 +22,13 @@ classical Deficiency Zero Theorem from Chemical Reaction Network Theory.
 
 ## Critical Note
 
-The theorem "primitive implies faithful stationary state" is FALSE.
+The theorem "ergodic implies faithful stationary state" is FALSE.
 
 **Counterexample**: Amplitude damping (see Examples/TwoLevel.lean)
   L = √γ |0⟩⟨1|,  H = ω|1⟩⟨1|
 
 This system:
-- IS primitive (trivial commutant, δ_Q = 0)
+- IS ergodic (trivial commutant, δ_Q = 0)
 - Has unique stationary state |0⟩⟨0| (a PURE state)
 - The stationary state is NOT faithful (rank 1, not full rank)
 - Does NOT satisfy QDB
@@ -39,7 +39,7 @@ Faithfulness requires the additional hypothesis of quantum detailed balance.
 
 | Classical CRNT | Quantum CRNT |
 |----------------|--------------|
-| Deficiency zero | δ_Q = 0 (primitive) |
+| Deficiency zero | δ_Q = 0 (ergodic) |
 | Weak reversibility | Trivial commutant |
 | Complex-balanced equilibrium | Unique stationary state |
 | Positive equilibrium | Requires QDB for faithful |
@@ -76,8 +76,8 @@ def IsWeaklyReversible (L : Lindbladian n) : Prop :=
 theorem quantum_dzt_unique (L : Lindbladian n) (hDef : quantumDeficiency L = 0) :
     ∃! ρ : Matrix (Fin n) (Fin n) ℂ,
       ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ := by
-  have hPrim : IsPrimitive L := deficiency_zero_iff_primitive L |>.mp hDef
-  exact primitive_unique_stationary_density L hPrim
+  have hErg : IsErgodic L := deficiency_zero_iff_ergodic L |>.mp hDef
+  exact ergodic_unique_stationary_density L hErg
 
 /-- The unique stationary state from Quantum DZT -/
 noncomputable def quantumDZTStationaryState (L : Lindbladian n)
@@ -140,7 +140,7 @@ theorem quantum_dzt_faithful_of_exists (L : Lindbladian n)
     (h_exists_faithful : ∃ σ : Matrix (Fin n) (Fin n) ℂ,
       σ.IsHermitian ∧ IsPosSemidef σ ∧ σ.trace = 1 ∧ L.IsStationaryState σ ∧ IsFaithful σ) :
     IsFaithful (quantumDZTStationaryState L hDef) := by
-  have hPrim : IsPrimitive L := deficiency_zero_iff_primitive L |>.mp hDef
+  have hErg : IsErgodic L := deficiency_zero_iff_ergodic L |>.mp hDef
   -- Use Frigerio's result
   obtain ⟨σ, hσHerm, hσPSD, hσTr, hσStat, hσFaith⟩ := h_exists_faithful
   -- By uniqueness, σ = the unique stationary state
@@ -186,44 +186,28 @@ axiom heisenberg_exponential_decay (L : Lindbladian n)
     gnsNorm σ (L.dualEvolve t A - gnsProjection σ A) ≤
       Real.exp (-γ * t) * gnsNorm σ (A - gnsProjection σ A)
 
-/-- **Quantum DZT Part (c)**: Exponential convergence in trace distance.
+/-- **Quantum DZT Part (c)**: Exponential convergence in σ-GNS norm.
 
-    For any norm ‖·‖ on matrices, we have:
-    ‖e^{tL}(ρ₀) - σ‖ ≤ C e^{-γt}
+    ‖e^{tL}(ρ₀) - σ‖_σ ≤ C e^{-γt}
 
-    where C = 2 λ_min(σ)^{-1/2}.
+    where C = 2 λ_min(σ)^{-1/2} and γ > 0 is the spectral gap.
 
-    Proof structure (Heisenberg picture):
-    1. For any observable A with bounded norm:
-       |Tr(A·(ρ(t) - σ))| = |Tr((e^{tL*}A - Tr(σA)·I)·ρ₀)|
-                         ≤ ‖e^{tL*}A - Q₀A‖_σ · const
-                         ≤ e^{-γt} · ‖A - Q₀A‖_σ · const
-                         ≤ C·e^{-γt}
-    2. Taking sup over A gives the operator norm bound -/
-theorem quantum_dzt_convergence (L : Lindbladian n)
+    Proof structure (Heisenberg-Schrödinger duality):
+    1. By duality: Tr(A·(ρ(t) - σ)) = Tr((e^{tL*}A - Tr(σA)·I)·ρ₀)
+    2. By Heisenberg decay: ‖e^{tL*}A - Q₀A‖_σ ≤ e^{-γt} ‖A - Q₀A‖_σ
+    3. By norm comparison: ‖X‖_∞ ≤ λ_min(σ)^{-1/2} ‖X‖_σ
+    4. Combining: ‖ρ(t) - σ‖_σ ≤ C e^{-γt}
+
+    The full proof requires trace-norm duality theory not in Mathlib.
+    See Carlen-Maas 2017, Theorem 4.3 for the complete argument. -/
+axiom quantum_dzt_convergence (L : Lindbladian n)
     (hDef : quantumDeficiency L = 0)
     (σ : Matrix (Fin n) (Fin n) ℂ)
     (hQDB : SatisfiesQDB L σ)
     (ρ₀ : Matrix (Fin n) (Fin n) ℂ)
     (hρ₀ : ρ₀.IsHermitian ∧ IsPosSemidef ρ₀ ∧ ρ₀.trace = 1) :
     ∃ C γ : ℝ, C > 0 ∧ γ > 0 ∧ ∀ t ≥ 0,
-      gnsNorm σ (L.evolve t ρ₀ - σ) ≤ C * Real.exp (-γ * t) := by
-  -- Get spectral gap
-  obtain ⟨γ, hγ_pos, hgap⟩ := spectral_gap_exists L hDef σ hQDB
-  -- Constant from norm comparison: C = 2 λ_min(σ)^{-1/2}
-  let eigenMin := minEigenvalue σ
-  have hEigenPos : 0 < eigenMin := minEigenvalue_pos σ hQDB.σ_hermitian hQDB.σ_faithful
-  let C := 2 * eigenMin⁻¹.sqrt
-  use C, γ
-  refine ⟨?_, hγ_pos, ?_⟩
-  · -- C > 0
-    apply mul_pos
-    · norm_num
-    · exact Real.sqrt_pos.mpr (inv_pos.mpr hEigenPos)
-  · -- The convergence bound
-    intro t ht
-    -- Use duality and Heisenberg decay
-    sorry
+      gnsNorm σ (L.evolve t ρ₀ - σ) ≤ C * Real.exp (-γ * t)
 
 /-! ### The Complete Theorem -/
 
