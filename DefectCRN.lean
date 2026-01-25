@@ -8,5 +8,6 @@ import DefectCRN.Oscillations
 import DefectCRN.ReactionDiffusion
 import DefectCRN.Control
 import DefectCRN.Cohomology
+import DefectCRN.Quantum
 import DefectCRN.Examples.Glycolysis
 import DefectCRN.Examples.TCA
