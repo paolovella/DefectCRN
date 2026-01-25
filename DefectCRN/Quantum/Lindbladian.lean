@@ -330,6 +330,64 @@ def pureDissipation (Ls : List (Matrix (Fin n) (Fin n) ℂ)) : Lindbladian n whe
   hamiltonian_hermitian := by simp [Matrix.IsHermitian]
   jumpOps := Ls
 
+/-! ## Dual (Heisenberg Picture) -/
+
+/-- The dual Lindbladian L* acting on observables (Heisenberg picture).
+    L*(A) = i[H, A] + Σₖ(Lₖ†ALₖ - ½{Lₖ†Lₖ, A})
+
+    Note: The sign of the Hamiltonian term is flipped compared to Schrödinger. -/
+noncomputable def dualApply (A : Matrix (Fin n) (Fin n) ℂ) : Matrix (Fin n) (Fin n) ℂ :=
+  Complex.I • ⟦L.hamiltonian, A⟧ +
+  L.jumpOps.foldl (fun acc Lk => acc + (Lk† * A * Lk - (1/2 : ℂ) • ⟨Lk† * Lk, A⟩₊)) 0
+
+/-- The dual as a linear map -/
+noncomputable def dualLinearMap : Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] Matrix (Fin n) (Fin n) ℂ where
+  toFun := L.dualApply
+  map_add' := by intro A B; simp only [dualApply]; sorry
+  map_smul' := by intro c A; simp only [dualApply]; sorry
+
+/-- Duality relation: Tr(A · L(ρ)) = Tr(L*(A) · ρ) -/
+axiom duality_relation [DecidableEq (Fin n)] (A ρ : Matrix (Fin n) (Fin n) ℂ) :
+    (A * L.apply ρ).trace = (L.dualApply A * ρ).trace
+
+/-- The spectrum of the dual Lindbladian (for spectral analysis).
+    This consists of eigenvalues of L* viewed as a linear map on M_n(ℂ). -/
+noncomputable def dualSpectrum : Set ℂ :=
+  {μ : ℂ | ∃ A : Matrix (Fin n) (Fin n) ℂ, A ≠ 0 ∧ L.dualApply A = μ • A}
+
+/-! ## Time Evolution -/
+
+end Lindbladian
+
+/-- The quantum semigroup e^{tL} applied to a density matrix (Schrödinger picture).
+    This requires matrix exponential infrastructure not yet fully in Mathlib.
+
+    Mathematical definition: For Lindbladian L and density matrix ρ₀,
+    ρ(t) = e^{tL}(ρ₀) is the unique solution to dρ/dt = L(ρ) with ρ(0) = ρ₀. -/
+axiom Lindbladian.evolve {n : ℕ} [NeZero n] (L : Lindbladian n)
+    (t : ℝ) (ρ : Matrix (Fin n) (Fin n) ℂ) : Matrix (Fin n) (Fin n) ℂ
+
+/-- The dual semigroup e^{tL*} applied to an observable (Heisenberg picture). -/
+axiom Lindbladian.dualEvolve {n : ℕ} [NeZero n] (L : Lindbladian n)
+    (t : ℝ) (A : Matrix (Fin n) (Fin n) ℂ) : Matrix (Fin n) (Fin n) ℂ
+
+/-- Semigroup property: e^{(s+t)L} = e^{sL} ∘ e^{tL} -/
+axiom Lindbladian.evolve_add {n : ℕ} [NeZero n] (L : Lindbladian n)
+    (s t : ℝ) (ρ : Matrix (Fin n) (Fin n) ℂ) :
+    L.evolve (s + t) ρ = L.evolve s (L.evolve t ρ)
+
+/-- Initial condition: e^{0·L}(ρ) = ρ -/
+axiom Lindbladian.evolve_zero {n : ℕ} [NeZero n] (L : Lindbladian n)
+    (ρ : Matrix (Fin n) (Fin n) ℂ) :
+    L.evolve 0 ρ = ρ
+
+/-- Duality for evolution: Tr(A · e^{tL}(ρ)) = Tr(e^{tL*}(A) · ρ) -/
+axiom Lindbladian.evolve_duality {n : ℕ} [NeZero n] [DecidableEq (Fin n)] (L : Lindbladian n)
+    (t : ℝ) (A ρ : Matrix (Fin n) (Fin n) ℂ) :
+    (A * L.evolve t ρ).trace = (L.dualEvolve t A * ρ).trace
+
+namespace Lindbladian
+
 end Lindbladian
 
 end DefectCRN.Quantum

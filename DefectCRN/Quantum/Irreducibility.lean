@@ -457,33 +457,27 @@ theorem primitive_iff_irreducible (L : Lindbladian n) :
     IsPrimitive L ↔ IsIrreducible L :=
   ⟨primitive_implies_irreducible L, irreducible_implies_primitive L⟩
 
-/-- Frigerio's Key Lemma (1978): The kernel projection of a PSD stationary state
-    is in the commutant of the Lindbladian.
+/- NOTE ON FRIGERIO'S LEMMA:
 
-    Mathematical proof (Frigerio, Spohn):
-    Let ρ ≥ 0 with L(ρ) = 0, and let P be the projection onto ker(ρ).
-    The Lindblad equation L(ρ) = -i[H,ρ] + Σₖ(LₖρLₖ† - ½{Lₖ†Lₖ,ρ}) = 0.
+    The claim "kernel projection of stationary state is in commutant" is FALSE in general.
 
-    Key observations when ρ ≥ 0:
-    1. For any vector v with ρv = 0: from ⟨v|L(ρ)|v⟩ = 0 and positivity,
-       we get Σₖ ‖Lₖ†v‖² = 0, hence Lₖ†v = 0 for all k.
-    2. This means Lₖ† maps ker(ρ) into ker(ρ), so [P, Lₖ†] P = 0.
-    3. Taking adjoints: P [Lₖ, P] = 0, and combining: [P, Lₖ] = 0.
-    4. The Hamiltonian part [H, ρ] = 0 (from the coherent term vanishing)
-       implies H preserves eigenspaces of ρ, so [P, H] = 0.
+    COUNTEREXAMPLE (Two-level amplitude damping):
+      L = √γ |0⟩⟨1|,  H = ω|1⟩⟨1|
 
-    This is a foundational result in quantum open systems theory.
-    Reference: Frigerio, A. Comm. Math. Phys. 63 (1978), 269-276. -/
-axiom kernel_projection_mem_commutant (L : Lindbladian n)
-    (ρ : Matrix (Fin n) (Fin n) ℂ) (hHerm : ρ.IsHermitian) (hPSD : IsPosSemidef ρ)
-    (hStat : L.IsStationaryState ρ)
-    -- The kernel projection P of ρ (projection onto zero eigenspace)
-    (P : Matrix (Fin n) (Fin n) ℂ)
-    -- P is the spectral projection for eigenvalue 0
-    (hP_def : P = (hHerm.eigenvectorUnitary : Matrix (Fin n) (Fin n) ℂ) *
-      Matrix.diagonal (fun k => if hHerm.eigenvalues k = 0 then 1 else 0) *
-      star (hHerm.eigenvectorUnitary : Matrix (Fin n) (Fin n) ℂ)) :
-    IsInCommutant L P
+    This system:
+    - IS primitive (commutant = ℂI)
+    - Has unique stationary state ρ = |0⟩⟨0| (rank 1, NOT faithful)
+    - The kernel projection P = |1⟩⟨1| is NOT in the commutant
+      (since [P, L†] = [|1⟩⟨1|, |1⟩⟨0|] = |1⟩⟨0| ≠ 0)
+
+    The original Frigerio (1978) paper proves a DIFFERENT result:
+    - For FAITHFUL stationary states, the dynamics satisfies detailed balance
+    - This does NOT imply all stationary states are faithful
+
+    The correct statement is:
+    - Primitive ⟹ unique stationary state (Theorem: primitive_unique_stationary_density)
+    - The unique stationary state may or may not be faithful
+    - Faithfulness requires additional conditions (e.g., detailed balance) -/
 
 /-- For Hermitian matrices, the quadratic form x† M x is real (im = 0).
     Proof: (x† M x)* = x† M† x = x† M x (using M = M†), so it equals its conjugate.
@@ -588,142 +582,19 @@ theorem positive_eigenvalues_implies_pos_def {ρ : Matrix (Fin n) (Fin n) ℂ}
   -- Convert to our definition
   exact ⟨hHerm, fun v hv => hPosDef.re_dotProduct_pos hv⟩
 
-/-- For primitive Lindbladians, any stationary density matrix is faithful.
+/- NOTE: The theorem "primitive_stationary_is_faithful" was REMOVED because it is FALSE.
 
-    Proof:
-    1. Suppose ρ is not faithful (has a zero eigenvalue).
-    2. The projection P onto the zero eigenspace is Hermitian and P² = P.
-    3. By Frigerio's lemma (kernel_projection_mem_commutant), P ∈ commutant.
-    4. By primitivity (= irreducibility), P = 0 or P = I.
-    5. P ≠ I since trace(ρ) = 1 means ρ has positive eigenvalues.
-    6. So P = 0, contradicting the existence of a zero eigenvalue.
-    7. Therefore ρ is faithful (positive definite).
+    COUNTEREXAMPLE: Two-level amplitude damping
+      L = √γ |0⟩⟨1|,  H = ω|1⟩⟨1|
 
-    Reference: Frigerio (1978), Spohn (1976). -/
-theorem primitive_stationary_is_faithful (L : Lindbladian n) (h : IsPrimitive L)
-    (ρ : Matrix (Fin n) (Fin n) ℂ)
-    (hρ : ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ) :
-    IsFaithful ρ := by
-  obtain ⟨hHerm, hPSD, hTr, hStat⟩ := hρ
-  -- Define the kernel projection P
-  let indicator : Fin n → ℂ := fun k => if hHerm.eigenvalues k = 0 then 1 else 0
-  let U := (hHerm.eigenvectorUnitary : Matrix (Fin n) (Fin n) ℂ)
-  let P := U * Matrix.diagonal indicator * star U
-  -- P is Hermitian and P² = P (projection properties)
-  have hUU' : star U * U = 1 := by
-    have hMem := hHerm.eigenvectorUnitary.prop
-    rw [Matrix.mem_unitaryGroup_iff'] at hMem
-    exact hMem
-  have hUU : U * star U = 1 := by
-    have hMem := hHerm.eigenvectorUnitary.prop
-    rw [Matrix.mem_unitaryGroup_iff] at hMem
-    exact hMem
-  have hind_idem : ∀ k, indicator k * indicator k = indicator k := by
-    intro k; simp only [indicator]; split_ifs <;> ring
-  have hind_real : ∀ k, star (indicator k) = indicator k := by
-    intro k; simp only [indicator]
-    split_ifs <;> simp [Complex.star_def]
-  have hP_proj : P * P = P := by
-    simp only [P]
-    have h1 : U * Matrix.diagonal indicator * star U *
-              (U * Matrix.diagonal indicator * star U) =
-              U * (Matrix.diagonal indicator * (star U * U) * Matrix.diagonal indicator) * star U := by
-      noncomm_ring
-    rw [h1, hUU', Matrix.mul_one]
-    congr 2
-    rw [Matrix.diagonal_mul_diagonal]
-    ext i j
-    simp only [Matrix.diagonal_apply]
-    split_ifs with h
-    · subst h; exact hind_idem i
-    · rfl
-  have hP_herm : P.IsHermitian := by
-    unfold P
-    rw [Matrix.IsHermitian, conjTranspose_mul, conjTranspose_mul]
-    have h1 : (star U)ᴴ = U := star_star U
-    have h2 : Uᴴ = star U := rfl
-    rw [h1, h2]
-    have hD_herm : (Matrix.diagonal indicator)ᴴ = Matrix.diagonal indicator := by
-      rw [Matrix.diagonal_conjTranspose]
-      ext i j
-      simp only [Matrix.diagonal_apply]
-      split_ifs with h
-      · subst h; exact hind_real i
-      · rfl
-    rw [hD_herm, Matrix.mul_assoc]
-  -- P is in commutant by Frigerio's lemma
-  have hP_comm : IsInCommutant L P := by
-    exact kernel_projection_mem_commutant L ρ hHerm hPSD hStat P rfl
-  -- By primitivity (= irreducibility), P = 0 or P = I
-  have hirred := (primitive_iff_irreducible L).mp h
-  have hP01 := hirred P hP_proj hP_herm hP_comm
-  -- Case analysis: P = 0 or P = I
-  rcases hP01 with hP0 | hP1
-  · -- Case P = 0: no zero eigenvalues, so all eigenvalues > 0
-    have hall_pos : ∀ k, hHerm.eigenvalues k > 0 := by
-      intro k
-      by_contra hk
-      push_neg at hk
-      -- From PSD, eigenvalues are ≥ 0
-      have hge := posSemidef_eigenvalues_nonneg hHerm hPSD k
-      have heq : hHerm.eigenvalues k = 0 := le_antisymm hk hge
-      -- But then indicator k = 1, so P ≠ 0
-      have hPk : (Matrix.diagonal indicator) k k = 1 := by
-        simp only [Matrix.diagonal_apply, indicator, heq, ↓reduceIte]
-      have hP_ne : P ≠ 0 := by
-        intro hP0'
-        have hD0 : Matrix.diagonal indicator = 0 := by
-          have h1 : star U * P * U = 0 := by rw [hP0']; simp
-          simp only [P] at h1
-          have h2 : star U * (U * Matrix.diagonal indicator * star U) * U =
-                    Matrix.diagonal indicator := by
-            have h3 : star U * (U * Matrix.diagonal indicator * star U) * U =
-                      (star U * U) * Matrix.diagonal indicator * (star U * U) := by noncomm_ring
-            rw [h3, hUU', Matrix.one_mul, Matrix.mul_one]
-          rw [h2] at h1
-          exact h1
-        have h00 : (Matrix.diagonal indicator) k k = (0 : Matrix (Fin n) (Fin n) ℂ) k k := by
-          rw [hD0]
-        simp only [Matrix.zero_apply] at h00
-        rw [hPk] at h00
-        exact one_ne_zero h00
-      exact hP_ne hP0
-    -- All eigenvalues positive means ρ is positive definite
-    exact positive_eigenvalues_implies_pos_def hHerm hall_pos
-  · -- Case P = I: all eigenvalues are 0, so ρ = 0, contradicting trace = 1
-    have hall_zero : ∀ k, hHerm.eigenvalues k = 0 := by
-      intro k
-      by_contra hk
-      have hind_k : indicator k = 0 := by simp only [indicator, hk, ↓reduceIte]
-      have hD_I : Matrix.diagonal indicator = 1 := by
-        have h1 : star U * P * U = star U * 1 * U := by rw [hP1]
-        simp only [P] at h1
-        have h2 : star U * (U * Matrix.diagonal indicator * star U) * U =
-                  Matrix.diagonal indicator := by
-          have h3 : star U * (U * Matrix.diagonal indicator * star U) * U =
-                    (star U * U) * Matrix.diagonal indicator * (star U * U) := by noncomm_ring
-          rw [h3, hUU', Matrix.one_mul, Matrix.mul_one]
-        have h4 : star U * 1 * U = 1 := by rw [Matrix.mul_one, hUU']
-        rw [h2, h4] at h1
-        exact h1
-      have h_eq : (Matrix.diagonal indicator) k k = (1 : Matrix (Fin n) (Fin n) ℂ) k k := by
-        rw [hD_I]
-      simp only [Matrix.diagonal_apply, Matrix.one_apply_eq, ↓reduceIte] at h_eq
-      rw [hind_k] at h_eq
-      exact zero_ne_one h_eq
-    have hρ_zero : ρ = 0 := by
-      rw [hHerm.spectral_theorem]
-      have hD_zero : Matrix.diagonal (RCLike.ofReal ∘ hHerm.eigenvalues) =
-          (0 : Matrix (Fin n) (Fin n) ℂ) := by
-        ext i j
-        simp only [Matrix.diagonal_apply, Function.comp_apply, Matrix.zero_apply]
-        split_ifs with h
-        · subst h; simp [hall_zero i]
-        · rfl
-      rw [hD_zero, Matrix.mul_zero, Matrix.zero_mul]
-    rw [hρ_zero] at hTr
-    simp only [Matrix.trace_zero] at hTr
-    exact False.elim (one_ne_zero hTr.symm)
+    This system is primitive (commutant = ℂI) but the unique stationary state
+    is |0⟩⟨0|, which is rank-1 (NOT faithful).
+
+    The error in the original proof was assuming kernel_projection_mem_commutant,
+    which is also false in general.
+
+    CORRECT STATEMENT: Primitive ⟹ unique stationary state (may or may not be faithful)
+    See: primitive_unique_stationary_density below. -/
 
 /-- In a 1-dimensional subspace, elements with equal nonzero trace are equal. -/
 theorem eq_of_mem_finrank_one_trace_eq {S : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ)}
