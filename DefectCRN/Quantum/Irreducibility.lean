@@ -8,6 +8,7 @@ import DefectCRN.Quantum.StationaryState
 import Mathlib.LinearAlgebra.Basis.VectorSpace
 import Mathlib.LinearAlgebra.Dimension.FreeAndStrongRankCondition
 import Mathlib.LinearAlgebra.Matrix.Spectrum
+import Mathlib.LinearAlgebra.Matrix.PosDef
 import Mathlib.LinearAlgebra.Lagrange
 
 /-!
@@ -19,7 +20,7 @@ set_option linter.unusedSectionVars false
 
 namespace DefectCRN.Quantum
 
-open scoped Matrix BigOperators
+open scoped Matrix BigOperators ComplexOrder
 open Matrix
 
 variable {n : ℕ} [NeZero n]
@@ -484,16 +485,54 @@ axiom kernel_projection_mem_commutant (L : Lindbladian n)
       star (hHerm.eigenvectorUnitary : Matrix (Fin n) (Fin n) ℂ)) :
     IsInCommutant L P
 
+/-- For Hermitian matrices, the quadratic form x† M x is real (im = 0).
+    Proof: (x† M x)* = x† M† x = x† M x (using M = M†), so it equals its conjugate.
+
+    This is a foundational fact used in the spectral theory of Hermitian matrices.
+    The formal proof requires showing that the double sum is invariant under
+    conjugation, which follows from M = M†. -/
+axiom hermitian_quadForm_im_eq_zero {n : ℕ} [NeZero n]
+    {M : Matrix (Fin n) (Fin n) ℂ} (hH : M.IsHermitian)
+    (x : Fin n → ℂ) : Complex.im (star x ⬝ᵥ M.mulVec x) = 0
+
+/-- Our IsPosSemidef implies Mathlib's Matrix.PosSemidef -/
+theorem isPosSemidef_to_matrixPosSemidef {ρ : Matrix (Fin n) (Fin n) ℂ}
+    (hPSD : IsPosSemidef ρ) : Matrix.PosSemidef ρ := by
+  constructor
+  · exact hPSD.1
+  · intro x
+    -- For Hermitian matrices, x† M x is real (im = 0) and we have re ≥ 0
+    rw [RCLike.nonneg_iff]
+    constructor
+    · exact hPSD.2 x
+    · exact hermitian_quadForm_im_eq_zero hPSD.1 x
+
 /-- For PSD matrices, eigenvalues are non-negative.
-    This follows from the definition: ⟨v|ρ|v⟩ ≥ 0 for all v implies eigenvalues ≥ 0. -/
-axiom posSemidef_eigenvalues_nonneg {ρ : Matrix (Fin n) (Fin n) ℂ}
+    This uses Mathlib's Matrix.PosSemidef.eigenvalues_nonneg. -/
+theorem posSemidef_eigenvalues_nonneg {ρ : Matrix (Fin n) (Fin n) ℂ}
     (hHerm : ρ.IsHermitian) (hPSD : IsPosSemidef ρ) :
-    ∀ k : Fin n, 0 ≤ hHerm.eigenvalues k
+    ∀ k : Fin n, 0 ≤ hHerm.eigenvalues k := by
+  intro k
+  -- Convert to Mathlib's PosSemidef
+  have hMPSD : Matrix.PosSemidef ρ := isPosSemidef_to_matrixPosSemidef hPSD
+  -- Use Mathlib's eigenvalues_nonneg
+  -- Note: hMPSD.1 is the IsHermitian witness from PosSemidef, which equals hHerm (same matrix)
+  exact hMPSD.eigenvalues_nonneg k
 
 /-- For Hermitian matrices with all positive eigenvalues, the quadratic form is
     strictly positive for nonzero vectors.
-    This is the spectral characterization of positive definiteness. -/
-axiom positive_eigenvalues_implies_pos_def {ρ : Matrix (Fin n) (Fin n) ℂ}
+    This is the spectral characterization of positive definiteness.
+
+    Proof outline:
+    1. Use spectral theorem: ρ = U D U† where D = diag(λᵢ) has positive entries.
+    2. For any nonzero v, let w = U†v (also nonzero since U is unitary).
+    3. Then v† ρ v = w† D w = Σᵢ λᵢ |wᵢ|².
+    4. Since all λᵢ > 0 and some |wᵢ|² > 0, we have v† ρ v > 0.
+
+    The formal proof requires manipulating matrix-vector products with the
+    spectral decomposition, which involves careful index manipulation. -/
+axiom positive_eigenvalues_implies_pos_def {n : ℕ} [NeZero n]
+    {ρ : Matrix (Fin n) (Fin n) ℂ}
     (hHerm : ρ.IsHermitian) (hall_pos : ∀ k : Fin n, 0 < hHerm.eigenvalues k) :
     IsPositiveDefinite ρ
 

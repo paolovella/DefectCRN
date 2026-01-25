@@ -67,23 +67,16 @@ theorem quantumDZT_faithful (L : Lindbladian n) (hDef : quantumDeficiency L = 0)
     reaction networks with weak reversibility have globally attracting
     complex-balanced equilibria.
 
-    Mathematical justification:
-    - Deficiency 0 ↔ primitive (by `deficiency_zero_iff_primitive`)
-    - Primitive implies unique faithful stationary state ρ_∞
-    - The spectral gap of L ensures exponential convergence:
-      ‖e^{tL}(ρ₀) - ρ_∞‖ ≤ C·e^{-γt} for some γ > 0
-    - Therefore e^{tL}(ρ₀) → ρ_∞ as t → ∞
-
-    References:
-    - Spohn, H. "An algebraic condition for the approach to equilibrium" (1977)
-    - Frigerio, A. "Stationary states of quantum dynamical semigroups" (1978) -/
-axiom quantum_dzt_convergence (L : Lindbladian n)
+    Proof: Direct corollary of `convergence_to_stationary` via definitional unfolding. -/
+theorem quantum_dzt_convergence (L : Lindbladian n)
     (hDef : quantumDeficiency L = 0)
     (ρ₀ : Matrix (Fin n) (Fin n) ℂ)
     (hρ₀ : ρ₀.IsHermitian ∧ IsPosSemidef ρ₀ ∧ ρ₀.trace = 1) :
     Filter.Tendsto
       (fun t : ℝ => quantumSemigroup L t ρ₀)
       Filter.atTop
-      (nhds (quantumDZTStationaryState L hDef))
+      (nhds (quantumDZTStationaryState L hDef)) := by
+  have hPrim : IsPrimitive L := (deficiency_zero_iff_primitive L).mp hDef
+  exact convergence_to_stationary L hPrim ρ₀ hρ₀
 
 end DefectCRN.Quantum
