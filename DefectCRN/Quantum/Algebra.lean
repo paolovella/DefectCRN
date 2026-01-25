@@ -6,6 +6,7 @@ Authors: Paolo Vella
 import DefectCRN.Quantum.Lindbladian
 import Mathlib.Algebra.Algebra.Subalgebra.Basic
 import Mathlib.LinearAlgebra.FiniteDimensional.Defs
+import Mathlib.Algebra.Polynomial.AlgebraMap
 
 /-!
 # Lindblad Algebra and Commutant
@@ -209,6 +210,29 @@ theorem one_mem_commutant (L : Lindbladian n) : (1 : Matrix (Fin n) (Fin n) ℂ)
   constructor
   · intro Lk _; simp [commutator]
   · intro Lk _; simp [commutator]
+
+/-- Polynomial evaluation of a commutant element stays in commutant.
+
+    If H ∈ commutant(L), then for any polynomial p, p(H) ∈ commutant(L).
+    This follows from commutant_closed_pow (H^k ∈ commutant) and linearity. -/
+theorem commutant_closed_polynomial (L : Lindbladian n)
+    (H : Matrix (Fin n) (Fin n) ℂ) (hH : H ∈ commutantSubmodule L)
+    (p : Polynomial ℂ) : Polynomial.aeval H p ∈ commutantSubmodule L := by
+  induction p using Polynomial.induction_on with
+  | h_C c =>
+    simp only [Polynomial.aeval_C, Algebra.algebraMap_eq_smul_one]
+    exact (commutantSubmodule L).smul_mem c (one_mem_commutant L)
+  | h_add f g hf hg =>
+    rw [map_add]
+    exact (commutantSubmodule L).add_mem hf hg
+  | h_monomial k c _ =>
+    rw [_root_.map_mul, Polynomial.aeval_C, Polynomial.aeval_X_pow]
+    have hpow : H ^ (k + 1) ∈ commutantSubmodule L := commutant_closed_pow L H hH (k + 1)
+    have h1 : (1 : Matrix (Fin n) (Fin n) ℂ) ∈ commutantSubmodule L := one_mem_commutant L
+    have hc1 : (algebraMap ℂ (Matrix (Fin n) (Fin n) ℂ)) c ∈ commutantSubmodule L := by
+      rw [Algebra.algebraMap_eq_smul_one]
+      exact (commutantSubmodule L).smul_mem c h1
+    exact commutant_closed_mul L _ _ hc1 hpow
 
 /-- Scalar submodule is contained in commutant -/
 theorem scalarSubmodule_le_commutant (L : Lindbladian n) :

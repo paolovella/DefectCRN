@@ -78,14 +78,56 @@ theorem primitive_implies_irreducible (L : Lindbladian n) (h : IsPrimitive L) :
 theorem hermitian_commutant_is_scalar (L : Lindbladian n) (h : IsIrreducible L)
     (H : Matrix (Fin n) (Fin n) ℂ) (hHerm : H.IsHermitian)
     (hComm : H ∈ commutantSubmodule L) : ∃ c : ℂ, H = c • (1 : Matrix (Fin n) (Fin n) ℂ) := by
-  -- The proof requires spectral theory and Lagrange interpolation
-  -- Key steps proven in supporting infrastructure:
-  -- - commutant_closed_pow: powers of H are in commutant
-  -- - commutant_closed_mul: products of commutant elements are in commutant
-  -- These imply any polynomial in H is in the commutant.
-  -- Spectral projections are polynomials in H (Lagrange), hence in commutant.
-  -- By irreducibility + orthogonality, H has only one eigenvalue, so H = λI.
-  sorry
+  -- Proof by contradiction: if H has distinct eigenvalues, we can construct
+  -- a non-trivial spectral projection in the commutant, contradicting irreducibility.
+
+  -- Step 1: Get eigenvalues from spectral theorem
+  let eigenvals := hHerm.eigenvalues
+
+  -- Step 2: Check if all eigenvalues are equal
+  by_cases hAllEq : ∀ i j : Fin n, eigenvals i = eigenvals j
+  · -- Case: All eigenvalues equal → H = λI
+    -- The spectral theorem gives H = U * diag(λ) * U*
+    -- If all λᵢ are equal to some λ, then diag(λ) = λI, so H = λI
+    use (eigenvals 0 : ℂ)
+    -- From spectral theorem: H = U * diagonal(eigenvals) * U*
+    have hSpec := hHerm.spectral_theorem
+    -- Since all eigenvalues are equal, diagonal(eigenvals) = eigenvals 0 • I
+    have hDiag : Matrix.diagonal (RCLike.ofReal ∘ eigenvals) =
+        (eigenvals 0 : ℂ) • (1 : Matrix (Fin n) (Fin n) ℂ) := by
+      ext i j
+      simp only [Matrix.diagonal, Matrix.smul_apply, Matrix.one_apply, Function.comp_apply]
+      by_cases hij : i = j
+      · subst hij; simp [hAllEq i 0]
+      · simp [hij]
+    rw [hSpec, hDiag, Matrix.mul_smul, smul_mul_assoc]
+    -- U * I * U* = U * U* = I for unitary U
+    have hUU : (hHerm.eigenvectorUnitary : Matrix (Fin n) (Fin n) ℂ) *
+               star (hHerm.eigenvectorUnitary : Matrix (Fin n) (Fin n) ℂ) = 1 := by
+      have hMem := hHerm.eigenvectorUnitary.prop
+      rw [Matrix.mem_unitaryGroup_iff] at hMem
+      exact hMem
+    simp only [Matrix.mul_one, hUU]
+
+  · -- Case: There exist distinct eigenvalues → derive contradiction
+    push_neg at hAllEq
+    obtain ⟨i, j, hij⟩ := hAllEq
+
+    -- The spectral projection for eigenvalue i is a polynomial in H
+    -- (via Lagrange interpolation), hence in commutant by commutant_closed_polynomial.
+    -- It's an orthogonal projection: P² = P, P = P†, P ≠ 0, P ≠ I.
+    -- By irreducibility, P must be 0 or I, contradiction.
+
+    -- This step requires constructing the Lagrange polynomial and showing
+    -- it evaluates to the spectral projection. The key ingredients are:
+    -- 1. commutant_closed_polynomial (proven): p(H) ∈ commutant for any polynomial p
+    -- 2. Spectral projections are Lagrange polynomials in H
+    -- 3. Distinct eigenvalues imply non-trivial projections
+
+    -- For now, we note that the supporting infrastructure is in place.
+    -- The full formal proof requires connecting Mathlib's spectral theorem
+    -- with Lagrange interpolation.
+    sorry
 
 /-- Irreducible implies primitive.
 
