@@ -34,7 +34,7 @@ set_option linter.unusedSectionVars false
 
 namespace DefectCRN.Quantum
 
-open scoped Matrix BigOperators
+open scoped Matrix BigOperators ComplexOrder
 open Matrix
 
 variable {n : ℕ} [NeZero n]
@@ -75,14 +75,15 @@ theorem gnsInnerProduct_smul_right (σ A B : Matrix (Fin n) (Fin n) ℂ) (c : �
 
 /-- For positive semidefinite σ, the GNS inner product satisfies ⟨A,A⟩_σ ≥ 0.
 
-    Mathematical proof:
-    ⟨A, A⟩_σ = Tr(σ A† A) = Tr(σ^{1/2} A† A σ^{1/2}) = ‖A σ^{1/2}‖²_HS ≥ 0
+    Mathematical proof using spectral decomposition:
+    Let σ = U D U† where D = diag(d₁, ..., dₙ) with dᵢ ≥ 0.
+    Then Tr(σ A† A) = Tr(D (AU)† (AU)) = Σᵢ dᵢ ‖(AU)ᵢ‖² ≥ 0.
 
-    Alternatively, using spectral decomposition σ = Σᵢ λᵢ |ψᵢ⟩⟨ψᵢ|:
-    Tr(σ A† A) = Σᵢ λᵢ ⟨ψᵢ|A†A|ψᵢ⟩ = Σᵢ λᵢ ‖A|ψᵢ⟩‖² ≥ 0
+    Alternatively: Tr(σ A† A) = Σᵢ dᵢ ⟨eᵢ|A†A|eᵢ⟩ = Σᵢ dᵢ ‖A|eᵢ⟩‖² ≥ 0
+    where |eᵢ⟩ are the eigenvectors of σ.
 
-    This requires spectral decomposition of PSD matrices, which is not
-    yet available in Mathlib for complex matrices. -/
+    Full formal proof requires trace-norm inequalities for products of PSD matrices
+    which are not yet available in Mathlib. -/
 axiom gnsInnerProduct_self_nonneg (σ A : Matrix (Fin n) (Fin n) ℂ)
     (hσ : IsPosSemidef σ) : 0 ≤ Complex.re (gnsInnerProduct σ A A)
 
@@ -151,15 +152,67 @@ theorem qdb_σ_density (L : Lindbladian n) (σ : Matrix (Fin n) (Fin n) ℂ)
 
 /-! ## Norm Comparison -/
 
-/-- Minimum eigenvalue of a faithful density matrix.
-    This is axiomatized since eigenvalue computation for complex matrices
-    requires infrastructure not fully available in Mathlib. -/
-axiom minEigenvalue (σ : Matrix (Fin n) (Fin n) ℂ) : ℝ
+/-- Minimum eigenvalue of a Hermitian matrix.
+    For a Hermitian matrix σ with spectral decomposition σ = U D U†,
+    this returns the smallest diagonal entry of D. -/
+noncomputable def minEigenvalue (σ : Matrix (Fin n) (Fin n) ℂ) (hσ : σ.IsHermitian) : ℝ :=
+  Finset.min' (Finset.univ.image hσ.eigenvalues)
+    (Finset.image_nonempty.mpr Finset.univ_nonempty)
+
+/-- The minimum eigenvalue is at most any specific eigenvalue -/
+theorem minEigenvalue_le (σ : Matrix (Fin n) (Fin n) ℂ) (hσ : σ.IsHermitian) (i : Fin n) :
+    minEigenvalue σ hσ ≤ hσ.eigenvalues i := by
+  unfold minEigenvalue
+  exact Finset.min'_le _ _ (Finset.mem_image_of_mem _ (Finset.mem_univ i))
+
+/-- For Hermitian matrices, the quadratic form x† M x is real (im = 0).
+    Proof: (x† M x)* = x† M† x = x† M x (using M = M†), so it equals its conjugate.
+    A self-conjugate complex number has imaginary part zero. -/
+private theorem hermitian_quadForm_im_eq_zero' {M : Matrix (Fin n) (Fin n) ℂ}
+    (hH : M.IsHermitian) (x : Fin n → ℂ) : Complex.im (star x ⬝ᵥ M.mulVec x) = 0 := by
+  have hSelfConj : star x ⬝ᵥ M.mulVec x = star (star x ⬝ᵥ M.mulVec x) := by
+    conv_rhs =>
+      rw [Matrix.star_dotProduct, star_star, Matrix.star_mulVec]
+    rw [← Matrix.dotProduct_mulVec, hH.eq]
+  have := congrArg Complex.im hSelfConj
+  simp only [Complex.star_def, Complex.conj_im] at this
+  linarith
+
+/-- Our IsPositiveDefinite implies Mathlib's Matrix.PosDef.
+
+    The key observation is that for a Hermitian matrix M, the quadratic form
+    x† M x is always real (imaginary part is 0). So positivity of the real
+    part implies positivity in the star ordering on ℂ. -/
+theorem isPositiveDefinite_to_posDef {ρ : Matrix (Fin n) (Fin n) ℂ}
+    (h : IsPositiveDefinite ρ) : ρ.PosDef := by
+  refine ⟨h.1, fun x hx => ?_⟩
+  -- We need: 0 < star x ⬝ᵥ ρ *ᵥ x in the ComplexOrder (star ordering)
+  -- We have: 0 < (star x ⬝ᵥ ρ *ᵥ x).re
+  -- For Hermitian ρ, the quadratic form is real, so im = 0
+  have hIm : (star x ⬝ᵥ ρ *ᵥ x).im = 0 := hermitian_quadForm_im_eq_zero' h.1 x
+  have hRe : 0 < (star x ⬝ᵥ ρ *ᵥ x).re := h.2 x hx
+  -- A complex number z with im z = 0 and re z > 0 satisfies 0 < z
+  rw [Complex.lt_def]
+  exact ⟨hRe, hIm.symm⟩
+
+/-- For faithful (positive definite) σ, all eigenvalues are positive -/
+theorem faithful_eigenvalues_pos (σ : Matrix (Fin n) (Fin n) ℂ)
+    (hσ_herm : σ.IsHermitian) (hσ_faithful : IsFaithful σ) :
+    ∀ i : Fin n, 0 < hσ_herm.eigenvalues i := by
+  intro i
+  -- IsFaithful means IsPositiveDefinite, which implies PosDef
+  have hPD : σ.PosDef := isPositiveDefinite_to_posDef hσ_faithful
+  exact hPD.eigenvalues_pos i
 
 /-- For faithful σ, the minimum eigenvalue is positive -/
-axiom minEigenvalue_pos (σ : Matrix (Fin n) (Fin n) ℂ)
+theorem minEigenvalue_pos (σ : Matrix (Fin n) (Fin n) ℂ)
     (hσ_herm : σ.IsHermitian) (hσ_faithful : IsFaithful σ) :
-    0 < minEigenvalue σ
+    0 < minEigenvalue σ hσ_herm := by
+  unfold minEigenvalue
+  rw [Finset.lt_min'_iff]
+  intro x hx
+  obtain ⟨i, _, rfl⟩ := Finset.mem_image.mp hx
+  exact faithful_eigenvalues_pos σ hσ_herm hσ_faithful i
 
 /-- Norm comparison: ‖X‖_∞ ≤ λ_min(σ)^{-1/2} ‖X‖_σ for faithful σ
 
@@ -170,7 +223,7 @@ axiom minEigenvalue_pos (σ : Matrix (Fin n) (Fin n) ℂ)
 axiom norm_comparison (σ X : Matrix (Fin n) (Fin n) ℂ)
     (hσ_herm : σ.IsHermitian) (hσ_faithful : IsFaithful σ)
     (normX : ℝ) :  -- We pass the norm as a parameter
-    normX ≤ (minEigenvalue σ)⁻¹.sqrt * gnsNorm σ X
+    normX ≤ (minEigenvalue σ hσ_herm)⁻¹.sqrt * gnsNorm σ X
 
 /-- For bounded operators, the deviation from projection is bounded.
 
