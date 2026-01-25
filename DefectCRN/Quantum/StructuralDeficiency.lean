@@ -84,6 +84,68 @@ theorem matrixUnit_dagger (i j : Fin n) : (matrixUnit i j)† = matrixUnit j i :
   simp only [dagger, conjTranspose_apply, matrixUnit, Matrix.stdBasisMatrix, of_apply]
   split_ifs <;> simp_all [eq_comm]
 
+/-- Any matrix can be decomposed as a sum of scaled matrix units -/
+theorem matrix_eq_sum_matrixUnits (A : Matrix (Fin n) (Fin n) ℂ) :
+    A = ∑ i : Fin n, ∑ j : Fin n, A i j • matrixUnit i j := by
+  ext a b
+  simp only [Matrix.sum_apply, Matrix.smul_apply, matrixUnit_apply, smul_eq_mul]
+  rw [Finset.sum_eq_single a]
+  · rw [Finset.sum_eq_single b]
+    · simp only [eq_self_iff_true, and_self, ↓reduceIte, mul_one]
+    · intro j _ hjb
+      simp only [hjb.symm, ↓reduceIte, mul_zero, and_false]
+    · intro hb
+      exact absurd (Finset.mem_univ b) hb
+  · intro i _ hia
+    apply Finset.sum_eq_zero
+    intro j _
+    simp only [hia.symm, ↓reduceIte, mul_zero, false_and]
+  · intro ha
+    exact absurd (Finset.mem_univ a) ha
+
+/-- Commutator with matrix unit: [X, E_ij] expressed entry-wise -/
+theorem commutator_matrixUnit_apply (X : Matrix (Fin n) (Fin n) ℂ) (i j : Fin n) (a b : Fin n) :
+    ⟦X, matrixUnit i j⟧ a b = (if b = j then X a i else 0) - (if a = i then X j b else 0) := by
+  simp only [commutator, Matrix.sub_apply, Matrix.mul_apply, matrixUnit_apply]
+  congr 1
+  · -- First term: (X * E_ij)_ab = X_ai if b = j, else 0
+    rw [Finset.sum_eq_single i]
+    · by_cases hbj : b = j <;> simp [hbj]
+    · intro k _ hki
+      simp [hki]
+    · intro hi
+      exact absurd (Finset.mem_univ i) hi
+  · -- Second term: (E_ij * X)_ab = X_jb if a = i, else 0
+    rw [Finset.sum_eq_single j]
+    · by_cases hai : a = i <;> simp [hai]
+    · intro k _ hkj
+      simp [hkj]
+    · intro hj
+      exact absurd (Finset.mem_univ j) hj
+
+/-- If [X, E_ij] = 0, then X_ai = 0 for a ≠ i when j ≠ i -/
+theorem comm_matrixUnit_offdiag_col (X : Matrix (Fin n) (Fin n) ℂ) (i j : Fin n) (hij : i ≠ j)
+    (hComm : ⟦X, matrixUnit i j⟧ = 0) (a : Fin n) (ha : a ≠ i) : X a i = 0 := by
+  have h := congrFun (congrFun hComm a) j
+  simp only [Matrix.zero_apply, commutator_matrixUnit_apply, eq_self_iff_true, ↓reduceIte] at h
+  simp only [ha, ↓reduceIte, sub_zero] at h
+  exact h
+
+/-- If [X, E_ij] = 0, then X_jb = 0 for b ≠ j when i ≠ j -/
+theorem comm_matrixUnit_offdiag_row (X : Matrix (Fin n) (Fin n) ℂ) (i j : Fin n) (hij : i ≠ j)
+    (hComm : ⟦X, matrixUnit i j⟧ = 0) (b : Fin n) (hb : b ≠ j) : X j b = 0 := by
+  have h := congrFun (congrFun hComm i) b
+  simp only [Matrix.zero_apply, commutator_matrixUnit_apply, eq_self_iff_true, ↓reduceIte] at h
+  simp only [hb, ↓reduceIte, zero_sub, neg_eq_zero] at h
+  exact h
+
+/-- If [X, E_ij] = 0, then X_ii = X_jj -/
+theorem comm_matrixUnit_diag_eq (X : Matrix (Fin n) (Fin n) ℂ) (i j : Fin n)
+    (hComm : ⟦X, matrixUnit i j⟧ = 0) : X i i = X j j := by
+  have h := congrFun (congrFun hComm i) j
+  simp only [Matrix.zero_apply, commutator_matrixUnit_apply, eq_self_iff_true, ↓reduceIte] at h
+  exact sub_eq_zero.mp h
+
 /-! ### Quantum Network Graph -/
 
 /-- A quantum network graph specifies which transitions are present in the Lindbladian.
