@@ -161,20 +161,113 @@ def directedSupportGraph (G : QuantumNetworkGraph n) : Finset (Fin n × Fin n) :
   (G.coherentEdges.biUnion fun e => {(e.1, e.2), (e.2, e.1)}) ∪
   (G.jumpEdges.biUnion fun e => {(e.1, e.2), (e.2, e.1)})
 
-/-- A directed graph is strongly connected if there's a path between any two vertices.
-    We axiomatize this as it requires graph theory infrastructure. -/
-axiom isStronglyConnected (edges : Finset (Fin n × Fin n)) : Prop
+/-- Reachability in a directed graph: there exists a path from i to j.
+    Defined inductively: either i = j, or there's an edge from i to some k
+    and k can reach j. -/
+inductive Reachable (edges : Finset (Fin n × Fin n)) : Fin n → Fin n → Prop where
+  | refl (i : Fin n) : Reachable edges i i
+  | step (i j k : Fin n) : (i, j) ∈ edges → Reachable edges j k → Reachable edges i k
 
-/-- The number of strongly connected components of a directed graph.
-    Axiomatized as it requires graph theory infrastructure. -/
-axiom numSCCs (edges : Finset (Fin n × Fin n)) : ℕ
+/-- Two vertices are mutually reachable if each can reach the other -/
+def MutuallyReachable (edges : Finset (Fin n × Fin n)) (i j : Fin n) : Prop :=
+  Reachable edges i j ∧ Reachable edges j i
+
+/-- Mutual reachability is reflexive -/
+theorem mutuallyReachable_refl (edges : Finset (Fin n × Fin n)) (i : Fin n) :
+    MutuallyReachable edges i i :=
+  ⟨Reachable.refl i, Reachable.refl i⟩
+
+/-- Mutual reachability is symmetric -/
+theorem mutuallyReachable_symm (edges : Finset (Fin n × Fin n)) (i j : Fin n)
+    (h : MutuallyReachable edges i j) : MutuallyReachable edges j i :=
+  ⟨h.2, h.1⟩
+
+/-- Reachability is transitive -/
+theorem reachable_trans (edges : Finset (Fin n × Fin n)) (i j k : Fin n)
+    (hij : Reachable edges i j) (hjk : Reachable edges j k) : Reachable edges i k := by
+  induction hij with
+  | refl _ => exact hjk
+  | step a b c hab _ ih => exact Reachable.step a b k hab (ih hjk)
+
+/-- Mutual reachability is transitive -/
+theorem mutuallyReachable_trans (edges : Finset (Fin n × Fin n)) (i j k : Fin n)
+    (hij : MutuallyReachable edges i j) (hjk : MutuallyReachable edges j k) :
+    MutuallyReachable edges i k :=
+  ⟨reachable_trans edges i j k hij.1 hjk.1, reachable_trans edges k j i hjk.2 hij.2⟩
+
+/-- A directed graph is strongly connected if every pair of vertices is mutually reachable -/
+def isStronglyConnected (edges : Finset (Fin n × Fin n)) : Prop :=
+  ∀ i j : Fin n, MutuallyReachable edges i j
+
+/-- The setoid of mutual reachability (for defining SCCs) -/
+def sccSetoid (edges : Finset (Fin n × Fin n)) : Setoid (Fin n) where
+  r := MutuallyReachable edges
+  iseqv := {
+    refl := mutuallyReachable_refl edges
+    symm := fun h => mutuallyReachable_symm edges _ _ h
+    trans := fun h1 h2 => mutuallyReachable_trans edges _ _ _ h1 h2
+  }
+
+/-- The number of strongly connected components is the number of equivalence classes
+    under mutual reachability.
+
+    We define this as the cardinality of the image of the quotient map, which equals
+    the number of distinct equivalence classes.
+
+    Note: This definition uses classical choice via Finset operations. -/
+noncomputable def numSCCs (edges : Finset (Fin n × Fin n)) : ℕ := by
+  classical
+  exact (Finset.univ.image fun i : Fin n => @Quotient.mk' (Fin n) (sccSetoid edges) i).card
 
 /-- A strongly connected graph has exactly 1 SCC -/
-axiom stronglyConnected_iff_one_scc (edges : Finset (Fin n × Fin n)) :
-    isStronglyConnected edges ↔ numSCCs edges = 1
+theorem stronglyConnected_iff_one_scc (edges : Finset (Fin n × Fin n)) :
+    isStronglyConnected edges ↔ numSCCs edges = 1 := by
+  classical
+  unfold isStronglyConnected numSCCs
+  constructor
+  · -- Strongly connected implies all vertices map to same equivalence class
+    intro hSC
+    have h_all_eq : ∀ i j : Fin n, @Quotient.mk' (Fin n) (sccSetoid edges) i =
+                                    @Quotient.mk' (Fin n) (sccSetoid edges) j := by
+      intro i j
+      apply Quotient.sound'
+      exact hSC i j
+    -- All elements map to the same class, so image has cardinality 1
+    rw [Finset.card_eq_one]
+    use @Quotient.mk' (Fin n) (sccSetoid edges) 0
+    ext q
+    simp only [Finset.mem_image, Finset.mem_univ, true_and, Finset.mem_singleton]
+    constructor
+    · rintro ⟨i, rfl⟩
+      exact h_all_eq i 0
+    · intro hq
+      exact ⟨0, hq.symm⟩
+  · -- 1 SCC implies strongly connected
+    intro h1
+    rw [Finset.card_eq_one] at h1
+    obtain ⟨q₀, hq₀⟩ := h1
+    intro i j
+    have hi : @Quotient.mk' (Fin n) (sccSetoid edges) i ∈
+              Finset.univ.image fun k => @Quotient.mk' (Fin n) (sccSetoid edges) k :=
+      Finset.mem_image_of_mem _ (Finset.mem_univ i)
+    have hj : @Quotient.mk' (Fin n) (sccSetoid edges) j ∈
+              Finset.univ.image fun k => @Quotient.mk' (Fin n) (sccSetoid edges) k :=
+      Finset.mem_image_of_mem _ (Finset.mem_univ j)
+    rw [hq₀] at hi hj
+    simp only [Finset.mem_singleton] at hi hj
+    have hij : @Quotient.mk' (Fin n) (sccSetoid edges) i =
+               @Quotient.mk' (Fin n) (sccSetoid edges) j := hi.trans hj.symm
+    exact Quotient.exact' hij
 
 /-- There is at least one SCC (since there's at least one vertex) -/
-axiom numSCCs_pos (edges : Finset (Fin n × Fin n)) : numSCCs edges ≥ 1
+theorem numSCCs_pos (edges : Finset (Fin n × Fin n)) : numSCCs edges ≥ 1 := by
+  classical
+  unfold numSCCs
+  have h0 : (0 : Fin n) ∈ Finset.univ := Finset.mem_univ 0
+  have : @Quotient.mk' (Fin n) (sccSetoid edges) 0 ∈
+         Finset.univ.image fun i => @Quotient.mk' (Fin n) (sccSetoid edges) i :=
+    Finset.mem_image_of_mem _ h0
+  exact Finset.card_pos.mpr ⟨_, this⟩
 
 /-! ### Parameter Robustness -/
 
@@ -287,9 +380,45 @@ theorem structural_deficiency_strongly_connected (G : QuantumNetworkGraph n)
     structuralDeficiency G = 0 :=
   (structural_deficiency_zero_iff_strongly_connected G).mpr hSC
 
+/-- In an empty graph, only reflexive reachability holds -/
+theorem reachable_empty_iff (i j : Fin n) :
+    Reachable (∅ : Finset (Fin n × Fin n)) i j ↔ i = j := by
+  constructor
+  · intro h
+    induction h with
+    | refl _ => rfl
+    | step a b c hab _ _ =>
+      exfalso
+      exact Finset.not_mem_empty (a, b) hab
+  · intro h
+    rw [h]
+    exact Reachable.refl j
+
+/-- In an empty graph, mutual reachability is equality -/
+theorem mutuallyReachable_empty_iff (i j : Fin n) :
+    MutuallyReachable (∅ : Finset (Fin n × Fin n)) i j ↔ i = j := by
+  unfold MutuallyReachable
+  rw [reachable_empty_iff, reachable_empty_iff]
+  constructor
+  · intro ⟨h1, _⟩; exact h1
+  · intro h; exact ⟨h, h.symm⟩
+
 /-- Maximum structural deficiency occurs when each vertex is its own SCC -/
-axiom numSCCs_empty (n : ℕ) [NeZero n] :
-    numSCCs (∅ : Finset (Fin n × Fin n)) = n
+theorem numSCCs_empty (n : ℕ) [NeZero n] :
+    numSCCs (∅ : Finset (Fin n × Fin n)) = n := by
+  classical
+  unfold numSCCs
+  -- Show that the quotient map is injective on the empty graph
+  have h_inj : Function.Injective (fun i : Fin n =>
+      @Quotient.mk' (Fin n) (sccSetoid (∅ : Finset (Fin n × Fin n))) i) := by
+    intro i j h_eq
+    have h_mr := Quotient.exact' h_eq
+    -- h_mr : (sccSetoid ∅).r i j, which is MutuallyReachable ∅ i j
+    unfold sccSetoid at h_mr
+    simp only [Setoid.r] at h_mr
+    rwa [mutuallyReachable_empty_iff] at h_mr
+  -- So the image has the same cardinality as the domain
+  rw [Finset.card_image_of_injective _ h_inj, Finset.card_fin]
 
 /-- Maximum structural deficiency is n-1 when there are no edges -/
 theorem structural_deficiency_max (G : QuantumNetworkGraph n)
