@@ -146,6 +146,11 @@ theorem comm_matrixUnit_diag_eq (X : Matrix (Fin n) (Fin n) ℂ) (i j : Fin n)
   simp only [Matrix.zero_apply, commutator_matrixUnit_apply, eq_self_iff_true, ↓reduceIte] at h
   exact sub_eq_zero.mp h
 
+/-- If [X, E_ij] = 0 for i ≠ j, then X_ji = 0 -/
+theorem comm_matrixUnit_offdiag_zero (X : Matrix (Fin n) (Fin n) ℂ) (i j : Fin n) (hij : i ≠ j)
+    (hComm : ⟦X, matrixUnit i j⟧ = 0) : X j i = 0 := by
+  exact comm_matrixUnit_offdiag_row X i j hij hComm i hij
+
 /-! ### Quantum Network Graph -/
 
 /-- A quantum network graph specifies which transitions are present in the Lindbladian.
@@ -331,6 +336,162 @@ theorem numSCCs_pos (edges : Finset (Fin n × Fin n)) : numSCCs edges ≥ 1 := b
     Finset.mem_image_of_mem _ h0
   exact Finset.card_pos.mpr ⟨_, this⟩
 
+/-! ### Structural Commutant Characterization -/
+
+/-- If (i,j) is in the directed support graph, then E_ji is in the test set -/
+theorem matrixUnit_mem_testSet_of_edge (G : QuantumNetworkGraph n) (i j : Fin n)
+    (hedge : (i, j) ∈ directedSupportGraph G) :
+    matrixUnit j i ∈ testSet G := by
+  unfold testSet directedSupportGraph at *
+  simp only [Finset.mem_union, Finset.mem_biUnion] at hedge ⊢
+  rcases hedge with ⟨e, he, hm⟩ | ⟨e, he, hm⟩
+  · -- From coherent edges
+    simp only [Finset.mem_insert, Finset.mem_singleton] at hm
+    left
+    rcases hm with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact ⟨e, he, by simp [matrixUnit]⟩
+    · exact ⟨e, he, by simp [matrixUnit]⟩
+  · -- From jump edges
+    simp only [Finset.mem_insert, Finset.mem_singleton] at hm
+    right
+    rcases hm with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact ⟨e, he, by simp [matrixUnit]⟩
+    · exact ⟨e, he, by simp [matrixUnit]⟩
+
+/-- The directed support graph is symmetric -/
+theorem directedSupportGraph_symm (G : QuantumNetworkGraph n) (i j : Fin n)
+    (h : (i, j) ∈ directedSupportGraph G) : (j, i) ∈ directedSupportGraph G := by
+  unfold directedSupportGraph at *
+  simp only [Finset.mem_union, Finset.mem_biUnion] at h ⊢
+  rcases h with ⟨e, he, hm⟩ | ⟨e, he, hm⟩
+  · simp only [Finset.mem_insert, Finset.mem_singleton] at hm ⊢
+    left
+    rcases hm with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact ⟨e, he, Or.inr rfl⟩
+    · exact ⟨e, he, Or.inl rfl⟩
+  · simp only [Finset.mem_insert, Finset.mem_singleton] at hm ⊢
+    right
+    rcases hm with ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+    · exact ⟨e, he, Or.inr rfl⟩
+    · exact ⟨e, he, Or.inl rfl⟩
+
+/-- If (i,j) is an edge in the directed support graph and X is in the structural commutant,
+    then X_ii = X_jj -/
+theorem structural_commutant_diag_eq_edge (G : QuantumNetworkGraph n)
+    (X : Matrix (Fin n) (Fin n) ℂ) (hX : IsInStructuralCommutant G X)
+    (i j : Fin n) (hij : i ≠ j) (hedge : (i, j) ∈ directedSupportGraph G) :
+    X i i = X j j := by
+  -- (i,j) ∈ directedSupportGraph means E_ji ∈ testSet
+  have hE : matrixUnit j i ∈ testSet G := matrixUnit_mem_testSet_of_edge G i j hedge
+  have hComm := hX (matrixUnit j i) hE
+  exact (comm_matrixUnit_diag_eq X j i hComm).symm
+
+/-- Diagonal equality propagates along reachable paths -/
+theorem structural_commutant_diag_eq_reachable (G : QuantumNetworkGraph n)
+    (X : Matrix (Fin n) (Fin n) ℂ) (hX : IsInStructuralCommutant G X)
+    (i j : Fin n) (hreach : Reachable (directedSupportGraph G) i j) :
+    X i i = X j j := by
+  induction hreach with
+  | refl _ => rfl
+  | step a b c hab _ ih =>
+    by_cases hab' : a = b
+    · subst hab'; exact ih
+    · have h1 := structural_commutant_diag_eq_edge G X hX a b hab' hab
+      exact h1.trans ih
+
+/-- If i and j are in the same SCC, their diagonal elements are equal -/
+theorem structural_commutant_diag_eq_scc (G : QuantumNetworkGraph n)
+    (X : Matrix (Fin n) (Fin n) ℂ) (hX : IsInStructuralCommutant G X)
+    (i j : Fin n) (hscc : MutuallyReachable (directedSupportGraph G) i j) :
+    X i i = X j j :=
+  structural_commutant_diag_eq_reachable G X hX i j hscc.1
+
+/-- If (i,j) is an edge and i ≠ j, then X_ij = 0 for X in structural commutant -/
+theorem structural_commutant_offdiag_zero_edge (G : QuantumNetworkGraph n)
+    (X : Matrix (Fin n) (Fin n) ℂ) (hX : IsInStructuralCommutant G X)
+    (i j : Fin n) (hij : i ≠ j) (hedge : (i, j) ∈ directedSupportGraph G) :
+    X i j = 0 := by
+  -- (i,j) ∈ directedSupportGraph means E_ji ∈ testSet
+  have hE : matrixUnit j i ∈ testSet G := matrixUnit_mem_testSet_of_edge G i j hedge
+  have hComm := hX (matrixUnit j i) hE
+  -- From [X, E_ji] = 0 with j ≠ i, comm_matrixUnit_offdiag_col gives X_aj = 0 for a ≠ j
+  -- Taking a = i: X_ij = 0
+  exact comm_matrixUnit_offdiag_col X j i hij.symm hComm i hij
+
+/-! ### Strongly Connected Case: Commutant is Scalar -/
+
+/-- If there's an edge FROM i (to any j ≠ i), then row i of X is zero except diagonal -/
+theorem structural_commutant_row_zero (G : QuantumNetworkGraph n)
+    (X : Matrix (Fin n) (Fin n) ℂ) (hX : IsInStructuralCommutant G X)
+    (i j : Fin n) (hij : i ≠ j) (hedge : (i, j) ∈ directedSupportGraph G)
+    (k : Fin n) (hk : k ≠ i) : X i k = 0 := by
+  -- Edge (i,j) means E_ji ∈ testSet, so [X, E_ji] = 0
+  have hE : matrixUnit j i ∈ testSet G := matrixUnit_mem_testSet_of_edge G i j hedge
+  have hComm := hX (matrixUnit j i) hE
+  -- From [X, E_ji] = 0: row i is zero except at column i
+  exact comm_matrixUnit_offdiag_row X j i hij.symm hComm k hk
+
+/-- If there's an edge TO j (from any i ≠ j), then column j of X is zero except diagonal -/
+theorem structural_commutant_col_zero (G : QuantumNetworkGraph n)
+    (X : Matrix (Fin n) (Fin n) ℂ) (hX : IsInStructuralCommutant G X)
+    (i j : Fin n) (hij : i ≠ j) (hedge : (i, j) ∈ directedSupportGraph G)
+    (k : Fin n) (hk : k ≠ j) : X k j = 0 := by
+  -- Edge (i,j) means E_ji ∈ testSet, so [X, E_ji] = 0
+  have hE : matrixUnit j i ∈ testSet G := matrixUnit_mem_testSet_of_edge G i j hedge
+  have hComm := hX (matrixUnit j i) hE
+  -- From [X, E_ji] = 0: column j is zero except at row j
+  exact comm_matrixUnit_offdiag_col X j i hij.symm hComm k hk
+
+/-- For a strongly connected graph, every element of the structural commutant is scalar.
+    This is the key lemma: strong connectivity ⟹ commutant = ℂ·I ⟹ dim = 1.
+
+    Proof sketch:
+    1. All diagonal elements are equal (from diagonal equality along any path)
+    2. All off-diagonal elements are zero (from edge constraints)
+    3. Therefore X = c·I for c = X₀₀
+
+    The off-diagonal zeroing uses: if i can reach j (i ≠ j), the path has a non-self-loop
+    edge (i, b) with b ≠ i. This edge zeros out row i except the diagonal.
+
+    Technical note: The full proof handles the edge case where paths may start with
+    self-loops. In practice, quantum network graphs don't have self-loops in the
+    directed support graph (diagonal Hamiltonian terms and diagonal jump operator
+    entries don't contribute to off-diagonal matrix units in the test set). -/
+theorem structural_commutant_scalar_of_strongly_connected (G : QuantumNetworkGraph n)
+    (hSC : isStronglyConnected (directedSupportGraph G))
+    (X : Matrix (Fin n) (Fin n) ℂ) (hX : IsInStructuralCommutant G X) :
+    ∃ c : ℂ, X = c • (1 : Matrix (Fin n) (Fin n) ℂ) := by
+  -- All diagonal elements are equal (via any path in strongly connected graph)
+  have hDiag : ∀ i j : Fin n, X i i = X j j := fun i j =>
+    structural_commutant_diag_eq_scc G X hX i j (hSC i j)
+  -- All off-diagonal elements are zero
+  have hOffDiag : ∀ i j : Fin n, i ≠ j → X i j = 0 := by
+    intro i j hij
+    -- From strong connectivity i → j, the path must have a non-self-loop edge
+    have hreach_ij := (hSC i j).1
+    -- The path from i to j with i ≠ j must eventually leave i via a real edge
+    induction hreach_ij with
+    | refl => exact absurd rfl hij
+    | @step a b k hab hbk ih =>
+      -- Edge (a, b) = (i, b) and path from b to k = j
+      by_cases hba : b = a
+      · -- Self-loop: continue with path from b = a = i to k = j
+        subst hba
+        exact ih hij
+      · -- Non-self-loop edge (i, b) with b ≠ i: row i is zero except diagonal
+        -- In the step case, a = i (source) and k = j (destination)
+        -- So hij : a ≠ k = i ≠ j, we need k ≠ a for the function
+        exact structural_commutant_row_zero G X hX a b (Ne.symm hba) hab k hij.symm
+  -- Construct the scalar
+  use X 0 0
+  ext i j
+  simp only [Matrix.smul_apply, Matrix.one_apply, smul_eq_mul, mul_ite, mul_one, mul_zero]
+  by_cases hij : i = j
+  · simp only [hij, ↓reduceIte]
+    exact (hDiag 0 j).symm
+  · simp only [hij, ↓reduceIte]
+    exact hOffDiag i j hij
+
 /-! ### Parameter Robustness -/
 
 /-- A Lindbladian has support in a quantum network graph G if:
@@ -405,6 +566,57 @@ theorem structural_le_deficiency (L : Lindbladian n) (G : QuantumNetworkGraph n)
 
 /-! ### Structural Deficiency Formula -/
 
+/-- The structural commutant of a strongly connected graph is contained in scalar matrices -/
+theorem structural_commutant_le_scalars_of_strongly_connected (G : QuantumNetworkGraph n)
+    (hSC : isStronglyConnected (directedSupportGraph G)) :
+    structuralCommutant G ≤ Submodule.span ℂ {(1 : Matrix (Fin n) (Fin n) ℂ)} := by
+  intro X hX
+  have ⟨c, hc⟩ := structural_commutant_scalar_of_strongly_connected G hSC X hX
+  rw [hc]
+  exact Submodule.smul_mem _ c (Submodule.subset_span rfl)
+
+/-- Scalars are in the structural commutant (for any graph) -/
+theorem scalars_le_structural_commutant (G : QuantumNetworkGraph n) :
+    Submodule.span ℂ {(1 : Matrix (Fin n) (Fin n) ℂ)} ≤ structuralCommutant G := by
+  rw [Submodule.span_le]
+  intro X hX
+  simp only [Set.mem_singleton_iff] at hX
+  subst hX
+  -- Need to show 1 ∈ structuralCommutant, i.e., [1, E_ij] = 0 for all E_ij ∈ testSet
+  intro A _
+  simp [commutator, Matrix.one_mul, Matrix.mul_one]
+
+/-- For strongly connected graphs, structural commutant equals scalars -/
+theorem structural_commutant_eq_scalars_of_strongly_connected (G : QuantumNetworkGraph n)
+    (hSC : isStronglyConnected (directedSupportGraph G)) :
+    structuralCommutant G = Submodule.span ℂ {(1 : Matrix (Fin n) (Fin n) ℂ)} :=
+  le_antisymm
+    (structural_commutant_le_scalars_of_strongly_connected G hSC)
+    (scalars_le_structural_commutant G)
+
+/-- Identity matrix is nonzero -/
+theorem one_matrix_ne_zero : (1 : Matrix (Fin n) (Fin n) ℂ) ≠ 0 := by
+  intro h
+  have : (1 : Matrix (Fin n) (Fin n) ℂ) 0 0 = 0 := by rw [h]; rfl
+  simp at this
+
+/-- For strongly connected graphs, structural commutant has dimension 1 -/
+theorem finrank_structural_commutant_of_strongly_connected (G : QuantumNetworkGraph n)
+    (hSC : isStronglyConnected (directedSupportGraph G)) :
+    Module.finrank ℂ (structuralCommutant G) = 1 := by
+  rw [structural_commutant_eq_scalars_of_strongly_connected G hSC]
+  -- span{1} has dimension 1
+  have h : (1 : Matrix (Fin n) (Fin n) ℂ) ≠ 0 := one_matrix_ne_zero
+  -- Use finrank_span_singleton from mathlib (Submodule.span ℂ {v} = ℂ ∙ v by definition)
+  exact finrank_span_singleton h
+
+/-- For strongly connected graphs, structural deficiency is zero (direct proof) -/
+theorem structural_deficiency_zero_of_strongly_connected (G : QuantumNetworkGraph n)
+    (hSC : isStronglyConnected (directedSupportGraph G)) :
+    structuralDeficiency G = 0 := by
+  unfold structuralDeficiency
+  rw [finrank_structural_commutant_of_strongly_connected G hSC]
+
 /-- **Structural Deficiency Formula** (Theorem 3.5 in paper)
 
     Let G be a quantum network graph and let k be the number of strongly
@@ -417,7 +629,10 @@ theorem structural_le_deficiency (L : Lindbladian n) (G : QuantumNetworkGraph n)
     2. Within each SCC S_i, the restriction of A(G) equals M_{n_i}(ℂ)
     3. Therefore A(G) ≅ M_{n_1}(ℂ) ⊕ ··· ⊕ M_{n_k}(ℂ)
     4. The commutant is A(G)' ≅ ℂ^k
-    5. Thus dim(C_struct(G)) = k and δ_Q^struct(G) = k - 1 -/
+    5. Thus dim(C_struct(G)) = k and δ_Q^struct(G) = k - 1
+
+    The k = 1 case (strongly connected) is fully proved above.
+    The general case requires block matrix representation theory. -/
 axiom structural_deficiency_formula (G : QuantumNetworkGraph n) :
     structuralDeficiency G = numSCCs (directedSupportGraph G) - 1
 
