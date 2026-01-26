@@ -238,10 +238,205 @@ theorem twoLevel_ergodic (ω γ : ℝ) (hγ : γ > 0) :
   · simp [Matrix.one_apply, hX10]
   · simp [Matrix.one_apply, hDiag]
 
-/-- Quantum deficiency is zero for γ > 0 -/
+/-! ### Direct computation of stationary condition -/
+
+/-- Explicit formula for σ⁻ρσ⁺ in terms of matrix entries -/
+theorem σminus_mul_ρ_mul_σplus (ρ : Matrix (Fin 2) (Fin 2) ℂ) :
+    σminus * ρ * σplus = ![![ρ 1 1, 0], ![0, 0]] := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [σminus, σplus, Matrix.mul_apply, Fin.sum_univ_two]
+
+/-- Explicit formula for σ⁺σ⁻ρ in terms of matrix entries -/
+theorem σplus_σminus_mul_ρ (ρ : Matrix (Fin 2) (Fin 2) ℂ) :
+    σplus * σminus * ρ = ![![0, 0], ![ρ 1 0, ρ 1 1]] := by
+  rw [σplus_σminus]
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [Matrix.mul_apply, Fin.sum_univ_two]
+
+/-- Explicit formula for ρσ⁺σ⁻ in terms of matrix entries -/
+theorem ρ_mul_σplus_σminus (ρ : Matrix (Fin 2) (Fin 2) ℂ) :
+    ρ * (σplus * σminus) = ![![0, ρ 0 1], ![0, ρ 1 1]] := by
+  rw [σplus_σminus]
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [Matrix.mul_apply, Fin.sum_univ_two]
+
+/-- Explicit formula for [H, ρ] in terms of matrix entries -/
+theorem twoLevelH_commutator (ω : ℝ) (ρ : Matrix (Fin 2) (Fin 2) ℂ) :
+    ⟦twoLevelH ω, ρ⟧ = ![![0, -ω * ρ 0 1], ![ω * ρ 1 0, 0]] := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [commutator, twoLevelH, Matrix.mul_apply, Matrix.sub_apply, Fin.sum_univ_two]
+  · ring
+  · ring
+
+/-- The (0,1) entry of L(ρ) for the two-level system -/
+theorem twoLevelL_apply_01 (ω γ : ℝ) (hγ : γ ≥ 0) (ρ : Matrix (Fin 2) (Fin 2) ℂ) :
+    (twoLevelL ω γ).apply ρ 0 1 = (Complex.I * ω - γ / 2) * ρ 0 1 := by
+  unfold Lindbladian.apply Lindbladian.unitaryPart Lindbladian.dissipator twoLevelL
+  simp only [List.foldl_cons, List.foldl_nil, add_zero]
+  simp only [Lindbladian.singleDissipator, anticommutator]
+  rw [decayOp_dagger (γ := γ), twoLevelH_commutator]
+  simp only [Matrix.add_apply, Matrix.smul_apply, Matrix.sub_apply]
+  unfold decayOp
+  simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul]
+  rw [σminus_mul_ρ_mul_σplus, σplus_σminus_mul_ρ, ρ_mul_σplus_σminus]
+  simp only [Matrix.smul_apply, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+    smul_eq_mul, Matrix.zero_apply]
+  -- Simplify √γ * √γ = γ
+  have hsq : (Real.sqrt γ : ℂ) * (Real.sqrt γ : ℂ) = γ := by
+    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hγ]
+  rw [hsq]
+  ring
+
+/-- The (1,0) entry of L(ρ) for the two-level system -/
+theorem twoLevelL_apply_10 (ω γ : ℝ) (hγ : γ ≥ 0) (ρ : Matrix (Fin 2) (Fin 2) ℂ) :
+    (twoLevelL ω γ).apply ρ 1 0 = (-Complex.I * ω - γ / 2) * ρ 1 0 := by
+  unfold Lindbladian.apply Lindbladian.unitaryPart Lindbladian.dissipator twoLevelL
+  simp only [List.foldl_cons, List.foldl_nil, add_zero]
+  simp only [Lindbladian.singleDissipator, anticommutator]
+  rw [decayOp_dagger (γ := γ), twoLevelH_commutator]
+  simp only [Matrix.add_apply, Matrix.smul_apply, Matrix.sub_apply]
+  unfold decayOp
+  simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul]
+  rw [σminus_mul_ρ_mul_σplus, σplus_σminus_mul_ρ, ρ_mul_σplus_σminus]
+  simp only [Matrix.smul_apply, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+    smul_eq_mul, Matrix.zero_apply]
+  have hsq : (Real.sqrt γ : ℂ) * (Real.sqrt γ : ℂ) = γ := by
+    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hγ]
+  rw [hsq]
+  ring
+
+/-- The (1,1) entry of L(ρ) for the two-level system -/
+theorem twoLevelL_apply_11 (ω γ : ℝ) (hγ : γ ≥ 0) (ρ : Matrix (Fin 2) (Fin 2) ℂ) :
+    (twoLevelL ω γ).apply ρ 1 1 = -γ * ρ 1 1 := by
+  unfold Lindbladian.apply Lindbladian.unitaryPart Lindbladian.dissipator twoLevelL
+  simp only [List.foldl_cons, List.foldl_nil, add_zero]
+  simp only [Lindbladian.singleDissipator, anticommutator]
+  rw [decayOp_dagger (γ := γ), twoLevelH_commutator]
+  simp only [Matrix.add_apply, Matrix.smul_apply, Matrix.sub_apply]
+  unfold decayOp
+  simp only [Matrix.smul_mul, Matrix.mul_smul, smul_smul]
+  rw [σminus_mul_ρ_mul_σplus, σplus_σminus_mul_ρ, ρ_mul_σplus_σminus]
+  simp only [Matrix.smul_apply, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+    smul_eq_mul, Matrix.zero_apply]
+  have hsq : (Real.sqrt γ : ℂ) * (Real.sqrt γ : ℂ) = γ := by
+    rw [← Complex.ofReal_mul, Real.mul_self_sqrt hγ]
+  rw [hsq]
+  ring
+
+/-- For γ > 0, if L(ρ) = 0 then ρ 1 1 = 0 -/
+theorem stationary_implies_ρ11_zero (ω γ : ℝ) (hγ : γ > 0)
+    (ρ : Matrix (Fin 2) (Fin 2) ℂ) (hStat : (twoLevelL ω γ).IsStationaryState ρ) :
+    ρ 1 1 = 0 := by
+  have h := congrFun (congrFun hStat 1) 1
+  rw [twoLevelL_apply_11 ω γ (le_of_lt hγ)] at h
+  simp only [Matrix.zero_apply] at h
+  -- -γ * ρ 1 1 = 0 with γ > 0 implies ρ 1 1 = 0
+  have hγ' : (-γ : ℂ) ≠ 0 := by
+    simp only [ne_eq, neg_eq_zero, Complex.ofReal_eq_zero]
+    linarith
+  exact mul_eq_zero.mp h |>.resolve_left hγ'
+
+/-- For γ > 0, if L(ρ) = 0 then ρ 0 1 = 0 -/
+theorem stationary_implies_ρ01_zero (ω γ : ℝ) (hγ : γ > 0)
+    (ρ : Matrix (Fin 2) (Fin 2) ℂ) (hStat : (twoLevelL ω γ).IsStationaryState ρ) :
+    ρ 0 1 = 0 := by
+  have h := congrFun (congrFun hStat 0) 1
+  rw [twoLevelL_apply_01 ω γ (le_of_lt hγ)] at h
+  simp only [Matrix.zero_apply] at h
+  -- (iω - γ/2) * ρ 0 1 = 0 with γ > 0 implies ρ 0 1 = 0
+  -- Since γ > 0, the coefficient iω - γ/2 has real part -γ/2 < 0, so nonzero
+  have hCoeff : (Complex.I * ω - γ / 2 : ℂ) ≠ 0 := by
+    intro hContra
+    -- If iω - γ/2 = 0, then the real part of (iω - γ/2) = 0
+    -- But Re(iω - γ/2) = 0 - γ/2 = -γ/2 < 0, contradiction
+    have hRe : (Complex.I * ω - γ / 2 : ℂ).re = 0 := by rw [hContra]; rfl
+    simp only [Complex.sub_re, Complex.mul_re, Complex.I_re, Complex.I_im, Complex.ofReal_re,
+      Complex.ofReal_im, zero_mul, one_mul, sub_zero] at hRe
+    -- Compute (↑γ / 2).re = γ / 2
+    have hDiv : ((γ : ℂ) / 2).re = γ / 2 := by
+      rw [Complex.div_re, Complex.ofReal_re, Complex.ofReal_im, Complex.normSq_ofNat]
+      have h2re : (2 : ℂ).re = 2 := rfl
+      rw [h2re]
+      ring
+    rw [hDiv] at hRe
+    linarith
+  exact mul_eq_zero.mp h |>.resolve_left hCoeff
+
+/-- For γ > 0, if L(ρ) = 0 then ρ 1 0 = 0 -/
+theorem stationary_implies_ρ10_zero (ω γ : ℝ) (hγ : γ > 0)
+    (ρ : Matrix (Fin 2) (Fin 2) ℂ) (hStat : (twoLevelL ω γ).IsStationaryState ρ) :
+    ρ 1 0 = 0 := by
+  have h := congrFun (congrFun hStat 1) 0
+  rw [twoLevelL_apply_10 ω γ (le_of_lt hγ)] at h
+  simp only [Matrix.zero_apply] at h
+  -- (-iω - γ/2) * ρ 1 0 = 0 with γ > 0 implies ρ 1 0 = 0
+  have hCoeff : (-Complex.I * ω - γ / 2 : ℂ) ≠ 0 := by
+    intro hContra
+    have hRe : (-Complex.I * ω - γ / 2 : ℂ).re = 0 := by rw [hContra]; rfl
+    simp only [Complex.sub_re, Complex.neg_re, Complex.mul_re, Complex.I_re, Complex.I_im,
+      Complex.ofReal_re, Complex.ofReal_im, zero_mul, one_mul, sub_zero, neg_zero] at hRe
+    have hDiv : ((γ : ℂ) / 2).re = γ / 2 := by
+      rw [Complex.div_re, Complex.ofReal_re, Complex.ofReal_im, Complex.normSq_ofNat]
+      have h2re : (2 : ℂ).re = 2 := rfl
+      rw [h2re]
+      ring
+    rw [hDiv] at hRe
+    linarith
+  exact mul_eq_zero.mp h |>.resolve_left hCoeff
+
+/-- Any stationary state is a scalar multiple of groundState -/
+theorem stationary_eq_scalar_groundState (ω γ : ℝ) (hγ : γ > 0)
+    (ρ : Matrix (Fin 2) (Fin 2) ℂ) (hStat : (twoLevelL ω γ).IsStationaryState ρ) :
+    ρ = ρ 0 0 • groundState := by
+  ext i j
+  fin_cases i <;> fin_cases j
+  · simp [groundState]
+  · simp [groundState, stationary_implies_ρ01_zero ω γ hγ ρ hStat]
+  · simp [groundState, stationary_implies_ρ10_zero ω γ hγ ρ hStat]
+  · simp [groundState, stationary_implies_ρ11_zero ω γ hγ ρ hStat]
+
+/-- The stationary subspace equals span{groundState} -/
+theorem stationary_subspace_eq_span (ω γ : ℝ) (hγ : γ > 0) :
+    (twoLevelL ω γ).stationarySubspace = Submodule.span ℂ {groundState} := by
+  apply le_antisymm
+  · -- Any stationary state is in span{groundState}
+    intro ρ hρ
+    rw [Lindbladian.mem_stationarySubspace_iff] at hρ
+    rw [Submodule.mem_span_singleton]
+    exact ⟨ρ 0 0, (stationary_eq_scalar_groundState ω γ hγ ρ hρ).symm⟩
+  · -- groundState is stationary
+    rw [Submodule.span_le, Set.singleton_subset_iff, SetLike.mem_coe,
+      Lindbladian.mem_stationarySubspace_iff]
+    exact groundState_stationary ω γ (le_of_lt hγ)
+
+/-- groundState is nonzero -/
+theorem groundState_ne_zero : groundState ≠ 0 := by
+  intro h
+  have : groundState 0 0 = 0 := congrFun (congrFun h 0) 0
+  simp [groundState] at this
+
+/-- The stationary subspace has dimension 1 -/
+theorem stationary_dim_one (ω γ : ℝ) (hγ : γ > 0) :
+    Module.finrank ℂ (twoLevelL ω γ).stationarySubspace = 1 := by
+  rw [stationary_subspace_eq_span ω γ hγ]
+  exact finrank_span_singleton groundState_ne_zero
+
+/-- Quantum deficiency is zero for γ > 0.
+
+    NOTE: The two-level amplitude damping system is ergodic but does NOT have a
+    faithful stationary state (the unique stationary state |0⟩⟨0| is pure/rank-1).
+    This is the counterexample showing that ergodicity doesn't imply faithfulness.
+
+    The proof shows dim(stationary) = 1 directly by computing L(ρ) = 0 and showing
+    any stationary ρ must have ρ₀₁ = ρ₁₀ = ρ₁₁ = 0, hence ρ ∈ span{groundState}. -/
 theorem twoLevel_deficiency_zero (ω γ : ℝ) (hγ : γ > 0) :
     quantumDeficiency (twoLevelL ω γ) = 0 := by
-  rw [deficiency_zero_iff_ergodic]
-  exact twoLevel_ergodic ω γ hγ
+  have hDim := stationary_dim_one ω γ hγ
+  unfold quantumDeficiency
+  omega
 
 end DefectCRN.Quantum.Examples.TwoLevel
