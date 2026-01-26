@@ -151,6 +151,16 @@ theorem comm_matrixUnit_offdiag_zero (X : Matrix (Fin n) (Fin n) ℂ) (i j : Fin
     (hComm : ⟦X, matrixUnit i j⟧ = 0) : X j i = 0 := by
   exact comm_matrixUnit_offdiag_row X i j hij hComm i hij
 
+/-- Scalar matrices commute with everything -/
+theorem commutator_scalar_left (c : ℂ) (A : Matrix (Fin n) (Fin n) ℂ) :
+    ⟦c • (1 : Matrix (Fin n) (Fin n) ℂ), A⟧ = 0 := by
+  simp [commutator, Matrix.smul_mul, Matrix.mul_smul, Matrix.one_mul, Matrix.mul_one]
+
+/-- Scalar matrices commute with everything (right version) -/
+theorem commutator_scalar_right (X : Matrix (Fin n) (Fin n) ℂ) (c : ℂ) :
+    ⟦X, c • (1 : Matrix (Fin n) (Fin n) ℂ)⟧ = 0 := by
+  simp [commutator, Matrix.smul_mul, Matrix.mul_smul, Matrix.one_mul, Matrix.mul_one]
+
 /-! ### Quantum Network Graph -/
 
 /-- A quantum network graph specifies which transitions are present in the Lindbladian.
@@ -533,7 +543,10 @@ def Lindbladian.hasSupport (L : Lindbladian n) (G : QuantumNetworkGraph n) : Pro
     Full proof requires infrastructure for:
     - Matrix decomposition into sums of matrix units
     - Sum manipulation for commutators
-    - Block structure analysis -/
+    - Block structure analysis
+
+    For the strongly connected case (k=1), this is fully proved below
+    (see structuralCommutant_le_commutant_of_strongly_connected). -/
 axiom structuralCommutant_le_commutant (L : Lindbladian n) (G : QuantumNetworkGraph n)
     (hSupp : L.hasSupport G) :
     structuralCommutant G ≤ commutantSubmodule L
@@ -593,6 +606,30 @@ theorem structural_commutant_eq_scalars_of_strongly_connected (G : QuantumNetwor
   le_antisymm
     (structural_commutant_le_scalars_of_strongly_connected G hSC)
     (scalars_le_structural_commutant G)
+
+/-- Scalars are in any Lindbladian commutant -/
+theorem scalars_le_commutant (L : Lindbladian n) :
+    Submodule.span ℂ {(1 : Matrix (Fin n) (Fin n) ℂ)} ≤ commutantSubmodule L := by
+  rw [Submodule.span_le]
+  intro X hX
+  simp only [Set.mem_singleton_iff] at hX
+  subst hX
+  simp only [commutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq, IsInCommutant]
+  refine ⟨?_, ?_, ?_⟩
+  · simp [commutator, Matrix.one_mul, Matrix.mul_one]
+  · intro Lk _; simp [commutator, Matrix.one_mul, Matrix.mul_one]
+  · intro Lk _; simp [commutator, Matrix.one_mul, Matrix.mul_one]
+
+/-- For strongly connected graphs, structural commutant ≤ Lindbladian commutant.
+    This is a fully proved special case of structuralCommutant_le_commutant. -/
+theorem structuralCommutant_le_commutant_of_strongly_connected (L : Lindbladian n)
+    (G : QuantumNetworkGraph n)
+    (hSC : isStronglyConnected (directedSupportGraph G)) :
+    structuralCommutant G ≤ commutantSubmodule L :=
+  calc structuralCommutant G
+      ≤ Submodule.span ℂ {(1 : Matrix (Fin n) (Fin n) ℂ)} :=
+          structural_commutant_le_scalars_of_strongly_connected G hSC
+    _ ≤ commutantSubmodule L := scalars_le_commutant L
 
 /-- Identity matrix is nonzero -/
 theorem one_matrix_ne_zero : (1 : Matrix (Fin n) (Fin n) ℂ) ≠ 0 := by
