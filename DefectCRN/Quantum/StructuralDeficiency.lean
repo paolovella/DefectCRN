@@ -654,6 +654,269 @@ theorem structural_deficiency_zero_of_strongly_connected (G : QuantumNetworkGrap
   unfold structuralDeficiency
   rw [finrank_structural_commutant_of_strongly_connected G hSC]
 
+/-! ### Non-Degenerate Graphs and General Formula -/
+
+/-- A graph is non-degenerate if every vertex has at least one edge.
+    This ensures every row and column of commutant elements is diagonal. -/
+def IsNonDegenerate (G : QuantumNetworkGraph n) : Prop :=
+  ∀ i : Fin n, ∃ j : Fin n, j ≠ i ∧ (i, j) ∈ directedSupportGraph G
+
+/-- For non-degenerate graphs, structural commutant elements are diagonal -/
+theorem structural_commutant_is_diagonal (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (X : Matrix (Fin n) (Fin n) ℂ)
+    (hX : IsInStructuralCommutant G X) (i j : Fin n) (hij : i ≠ j) :
+    X i j = 0 := by
+  -- Every vertex has an edge, so X is diagonal
+  obtain ⟨k, hk_ne, hk_edge⟩ := hND i
+  -- Edge (i,k) means row i is zero except diagonal
+  exact structural_commutant_row_zero G X hX i k hk_ne.symm hk_edge j hij.symm
+
+/-- The diagonal indicator for an SCC: 1 if vertex is in that SCC, 0 otherwise -/
+noncomputable def sccIndicator (edges : Finset (Fin n × Fin n)) (rep : Fin n) (i : Fin n) : ℂ := by
+  classical
+  exact if MutuallyReachable edges rep i then 1 else 0
+
+/-- Diagonal matrix with 1s on an SCC and 0s elsewhere -/
+noncomputable def sccDiagonal (edges : Finset (Fin n × Fin n)) (rep : Fin n) :
+    Matrix (Fin n) (Fin n) ℂ :=
+  Matrix.diagonal (sccIndicator edges rep)
+
+/-- For non-degenerate graphs, the structural commutant is spanned by SCC diagonal matrices.
+    Each SCC contributes one degree of freedom (a scalar on that block). -/
+theorem structural_commutant_diagonal_scc (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (X : Matrix (Fin n) (Fin n) ℂ)
+    (hX : IsInStructuralCommutant G X) :
+    ∀ i j : Fin n, MutuallyReachable (directedSupportGraph G) i j → X i i = X j j :=
+  fun i j h => structural_commutant_diag_eq_scc G X hX i j h
+
+/-- For non-degenerate graphs, commutant elements are diagonal with constant entries per SCC.
+    This means X = Σ_{SCC S} c_S · P_S where P_S is the diagonal projection onto SCC S. -/
+theorem structural_commutant_block_diagonal (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (X : Matrix (Fin n) (Fin n) ℂ)
+    (hX : IsInStructuralCommutant G X) :
+    ∃ f : Fin n → ℂ,
+      (∀ i j : Fin n, MutuallyReachable (directedSupportGraph G) i j → f i = f j) ∧
+      X = Matrix.diagonal f := by
+  use fun i => X i i
+  constructor
+  · intro i j h
+    exact structural_commutant_diag_eq_scc G X hX i j h
+  · ext i j
+    by_cases hij : i = j
+    · simp [hij, Matrix.diagonal_apply]
+    · simp [hij, Matrix.diagonal_apply, structural_commutant_is_diagonal G hND X hX i j hij]
+
+/-- The subspace of diagonal matrices with constant diagonal per SCC -/
+noncomputable def diagConstPerSCC (edges : Finset (Fin n × Fin n)) :
+    Submodule ℂ (Matrix (Fin n) (Fin n) ℂ) where
+  carrier := { X | (∀ i j : Fin n, i ≠ j → X i j = 0) ∧
+                   (∀ i j : Fin n, MutuallyReachable edges i j → X i i = X j j) }
+  zero_mem' := by
+    simp only [Set.mem_setOf_eq, Matrix.zero_apply, implies_true, and_self]
+  add_mem' := by
+    intro X Y hX hY
+    simp only [Set.mem_setOf_eq, Matrix.add_apply] at hX hY ⊢
+    constructor
+    · intro i j hij
+      rw [hX.1 i j hij, hY.1 i j hij, add_zero]
+    · intro i j hmr
+      rw [hX.2 i j hmr, hY.2 i j hmr]
+  smul_mem' := by
+    intro c X hX
+    simp only [Set.mem_setOf_eq, Matrix.smul_apply, smul_eq_mul] at hX ⊢
+    constructor
+    · intro i j hij
+      rw [hX.1 i j hij, mul_zero]
+    · intro i j hmr
+      rw [hX.2 i j hmr]
+
+/-- Diagonal matrices commute with any matrix unit E_pq if diagonals are equal: X_pp = X_qq -/
+theorem diagonal_commutes_with_matrixUnit (X : Matrix (Fin n) (Fin n) ℂ)
+    (hDiag : ∀ i j : Fin n, i ≠ j → X i j = 0) (p q : Fin n) (hEq : X p p = X q q) :
+    ⟦X, matrixUnit p q⟧ = 0 := by
+  ext a b
+  simp only [commutator, Matrix.sub_apply, Matrix.mul_apply, matrixUnit_apply, Matrix.zero_apply]
+  -- (X * E_pq)_ab = Σ_k X_ak * (E_pq)_kb = X_ap if b = q, else 0
+  -- (E_pq * X)_ab = Σ_k (E_pq)_ak * X_kb = X_qb if a = p, else 0
+  rw [Finset.sum_eq_single p, Finset.sum_eq_single q]
+  · -- Main terms: need (X_ap * [k=p∧b=q]) - ([a=p∧k=q] * X_kb) = 0
+    -- After substitution: (X_ap * [b=q]) - ([a=p] * X_qb) = 0
+    by_cases hap : a = p <;> by_cases hbq : b = q
+    · -- a = p, b = q: X_pp * 1 - 1 * X_qq = X_pp - X_qq = 0
+      subst hap hbq
+      simp only [eq_self_iff_true, and_self, ↓reduceIte, mul_one, one_mul]
+      exact sub_eq_zero.mpr hEq
+    · -- a = p, b ≠ q: X_pp * 0 - 1 * X_qb = -X_qb = 0 (since q ≠ b)
+      subst hap
+      simp only [eq_self_iff_true, true_and, hbq, ↓reduceIte, mul_zero, and_true, one_mul,
+        zero_sub, neg_eq_zero]
+      exact hDiag q b (Ne.symm hbq)
+    · -- a ≠ p, b = q: X_ap * 1 - 0 * X_qq = X_ap = 0 (since a ≠ p)
+      subst hbq
+      simp only [eq_self_iff_true, and_true, ↓reduceIte, mul_one, hap, and_false, zero_mul,
+        sub_zero]
+      exact hDiag a p hap
+    · -- a ≠ p, b ≠ q: X_ap * 0 - 0 * X_qb = 0
+      simp only [hap, hbq, and_self, and_false, false_and, ↓reduceIte, mul_zero, zero_mul, sub_zero]
+  · intro k _ hkq; simp [hkq]
+  · intro hq; exact absurd (Finset.mem_univ q) hq
+  · intro k _ hkp; simp [hkp]
+  · intro hp; exact absurd (Finset.mem_univ p) hp
+
+/-- For non-degenerate graphs, the structural commutant equals diagConstPerSCC -/
+theorem structural_commutant_eq_diagConstPerSCC (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) :
+    structuralCommutant G = diagConstPerSCC (directedSupportGraph G) := by
+  ext X
+  simp only [structuralCommutant, structuralCommutantSet, Submodule.mem_mk, Set.mem_setOf_eq,
+    diagConstPerSCC, Submodule.mem_mk]
+  constructor
+  · intro hX
+    constructor
+    · exact fun i j hij => structural_commutant_is_diagonal G hND X hX i j hij
+    · exact fun i j hmr => structural_commutant_diag_eq_scc G X hX i j hmr
+  · intro ⟨hDiag, hSCC⟩
+    intro A hA
+    -- A is a matrix unit E_pq in the test set
+    -- The test set contains E_pq for edges, so p and q are in the same SCC
+    -- By hSCC, X_pp = X_qq, so diagonal_commutes_with_matrixUnit applies
+    unfold testSet at hA
+    simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert,
+      Finset.mem_singleton] at hA
+    rcases hA with ⟨e, he, (rfl | rfl)⟩ | ⟨e, he, (rfl | rfl)⟩
+    all_goals {
+      apply diagonal_commutes_with_matrixUnit X hDiag
+      apply hSCC
+      -- Show e.1 and e.2 are mutually reachable (they're in same SCC due to edge)
+      -- Coherent edges are symmetric, jump edges give both directions in directed support
+      constructor <;> {
+        apply Reachable.step _ _ _ _ (Reachable.refl _)
+        unfold directedSupportGraph
+        simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+        first | left; exact ⟨e, he, Or.inl rfl⟩
+              | left; exact ⟨e, he, Or.inr rfl⟩
+              | right; exact ⟨e, he, Or.inl rfl⟩
+              | right; exact ⟨e, he, Or.inr rfl⟩
+      }
+    }
+
+/-- The SCC class of a vertex -/
+noncomputable def sccClass (edges : Finset (Fin n × Fin n)) (i : Fin n) :
+    Quotient (sccSetoid edges) :=
+  @Quotient.mk' (Fin n) (sccSetoid edges) i
+
+/-- Map from diagConstPerSCC to functions on SCCs: X ↦ (λ [i], X i i) -/
+noncomputable def diagToSCCFun (edges : Finset (Fin n × Fin n)) :
+    diagConstPerSCC edges →ₗ[ℂ] (Quotient (sccSetoid edges) → ℂ) where
+  toFun X q :=
+    -- Pick a representative and return the diagonal value there
+    Quotient.liftOn' q (fun i => (X : Matrix (Fin n) (Fin n) ℂ) i i) (fun i j h => X.2.2 i j h)
+  map_add' X Y := by
+    ext q
+    induction q using Quotient.inductionOn' with
+    | h i => rfl
+  map_smul' c X := by
+    ext q
+    induction q using Quotient.inductionOn' with
+    | h i => rfl
+
+/-- Map from functions on SCCs to diagConstPerSCC: f ↦ diagonal(λ i, f [i]) -/
+noncomputable def sccFunToDiag (edges : Finset (Fin n × Fin n)) :
+    (Quotient (sccSetoid edges) → ℂ) →ₗ[ℂ] diagConstPerSCC edges where
+  toFun f := ⟨Matrix.diagonal (fun i => f (sccClass edges i)), by
+    simp only [diagConstPerSCC, Submodule.mem_mk, Set.mem_setOf_eq]
+    constructor
+    · intro i j hij
+      simp [Matrix.diagonal_apply, hij]
+    · intro i j hmr
+      simp only [Matrix.diagonal_apply, eq_self_iff_true, ↓reduceIte]
+      congr 1
+      exact Quotient.sound' hmr⟩
+  map_add' f g := by
+    ext i j
+    simp only [Submodule.coe_add, Pi.add_apply, Matrix.add_apply, Matrix.diagonal_apply]
+    by_cases hij : i = j <;> simp [hij]
+  map_smul' c f := by
+    ext i j
+    simp only [RingHom.id_apply, Submodule.coe_smul, Pi.smul_apply, Matrix.smul_apply,
+      smul_eq_mul, Matrix.diagonal_apply]
+    by_cases hij : i = j <;> simp [hij]
+
+/-- diagToSCCFun is left inverse to sccFunToDiag -/
+theorem diagToSCCFun_sccFunToDiag (edges : Finset (Fin n × Fin n)) :
+    (diagToSCCFun edges).comp (sccFunToDiag edges) = LinearMap.id := by
+  ext f q
+  simp only [LinearMap.coe_comp, Function.comp_apply, LinearMap.id_coe, id_eq]
+  induction q using Quotient.inductionOn' with
+  | h i =>
+    simp only [sccFunToDiag, diagToSCCFun, LinearMap.coe_mk, AddHom.coe_mk]
+    -- liftOn' (mk' i) (fun j => diagonal(...) j j) _ = f (mk' i)
+    -- This is definitionally equal since liftOn'_mk' applies
+    simp only [sccClass, Matrix.diagonal_apply, eq_self_iff_true, ↓reduceIte]
+    rfl
+
+/-- sccFunToDiag is left inverse to diagToSCCFun -/
+theorem sccFunToDiag_diagToSCCFun (edges : Finset (Fin n × Fin n)) :
+    (sccFunToDiag edges).comp (diagToSCCFun edges) = LinearMap.id := by
+  ext ⟨X, hX⟩ i j
+  simp only [LinearMap.coe_comp, Function.comp_apply, LinearMap.id_coe, id_eq]
+  simp only [diagToSCCFun, sccFunToDiag, LinearMap.coe_mk, AddHom.coe_mk, sccClass]
+  by_cases hij : i = j
+  · subst hij
+    simp only [Matrix.diagonal_apply, eq_self_iff_true, ↓reduceIte]
+    rfl
+  · simp only [Matrix.diagonal_apply, hij, ↓reduceIte]
+    exact (hX.1 i j hij).symm
+
+/-- diagConstPerSCC is linearly equivalent to functions on SCCs -/
+noncomputable def diagConstPerSCCEquiv (edges : Finset (Fin n × Fin n)) :
+    diagConstPerSCC edges ≃ₗ[ℂ] (Quotient (sccSetoid edges) → ℂ) :=
+  LinearEquiv.ofLinear
+    (diagToSCCFun edges)
+    (sccFunToDiag edges)
+    (diagToSCCFun_sccFunToDiag edges)
+    (sccFunToDiag_diagToSCCFun edges)
+
+/-- The dimension of diagConstPerSCC equals numSCCs -/
+theorem finrank_diagConstPerSCC (edges : Finset (Fin n × Fin n)) :
+    Module.finrank ℂ (diagConstPerSCC edges) = numSCCs edges := by
+  classical
+  rw [LinearEquiv.finrank_eq (diagConstPerSCCEquiv edges)]
+  -- finrank of function space = card of domain
+  rw [Module.finrank_pi_fintype]
+  simp only [Module.finrank_self, Finset.sum_const, smul_eq_mul, mul_one]
+  -- card of quotient = numSCCs
+  unfold numSCCs
+  -- The quotient type has cardinality equal to the image of the quotient map
+  -- Show: card(Quotient) = card(image of mk')
+  have h : Fintype.card (Quotient (sccSetoid edges)) =
+      (Finset.univ.image fun i => @Quotient.mk' (Fin n) (sccSetoid edges) i).card := by
+    rw [← Finset.card_univ (α := Quotient (sccSetoid edges))]
+    -- univ on quotient = image of quotient map from univ on Fin n
+    have hEq : (Finset.univ : Finset (Quotient (sccSetoid edges))) =
+        Finset.univ.image (fun i => @Quotient.mk' (Fin n) (sccSetoid edges) i) := by
+      ext q
+      simp only [Finset.mem_univ, Finset.mem_image, true_iff, true_and]
+      induction q using Quotient.inductionOn' with
+      | h i => exact ⟨i, rfl⟩
+    rw [hEq]
+  exact h
+
+/-- The structural deficiency formula for non-degenerate graphs.
+
+    For a non-degenerate quantum network graph G with k = numSCCs(D(G)):
+    δ_Q^struct(G) = k - 1
+
+    This is fully proved: the structural commutant consists of diagonal matrices
+    with constant diagonal entries within each SCC, which has dimension k. -/
+theorem structural_deficiency_formula_nondegenerate (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) :
+    structuralDeficiency G = numSCCs (directedSupportGraph G) - 1 := by
+  classical
+  unfold structuralDeficiency
+  rw [structural_commutant_eq_diagConstPerSCC G hND]
+  rw [finrank_diagConstPerSCC]
+
 /-- **Structural Deficiency Formula** (Theorem 3.5 in paper)
 
     Let G be a quantum network graph and let k be the number of strongly
@@ -669,7 +932,8 @@ theorem structural_deficiency_zero_of_strongly_connected (G : QuantumNetworkGrap
     5. Thus dim(C_struct(G)) = k and δ_Q^struct(G) = k - 1
 
     The k = 1 case (strongly connected) is fully proved above.
-    The general case requires block matrix representation theory. -/
+    The non-degenerate case is proved in structural_deficiency_formula_nondegenerate.
+    The general case (allowing isolated vertices) requires special handling. -/
 axiom structural_deficiency_formula (G : QuantumNetworkGraph n) :
     structuralDeficiency G = numSCCs (directedSupportGraph G) - 1
 
