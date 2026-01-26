@@ -6,6 +6,8 @@ Authors: Paolo Vella
 import DefectCRN.Quantum.Lindbladian
 import Mathlib.Algebra.Algebra.Subalgebra.Basic
 import Mathlib.LinearAlgebra.FiniteDimensional.Defs
+import Mathlib.LinearAlgebra.Dimension.Finrank
+import Mathlib.LinearAlgebra.Dual
 import Mathlib.Algebra.Polynomial.AlgebraMap
 
 /-!
@@ -17,7 +19,7 @@ set_option linter.unusedSectionVars false
 
 namespace DefectCRN.Quantum
 
-open scoped Matrix BigOperators
+open scoped Matrix BigOperators ComplexOrder
 open Matrix
 
 variable {n : ℕ} [NeZero n]
@@ -272,22 +274,841 @@ theorem commutant_dim_one_implies_trivial (L : Lindbladian n)
   obtain ⟨c, hc⟩ := hXmem
   exact ⟨c, hc.symm⟩
 
-/-- Dimension of the commutant equals dimension of stationary space.
+/-- The dual stationary subspace (ker L*) -/
+noncomputable def dualStationarySubspace (L : Lindbladian n) : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ) :=
+  LinearMap.ker L.dualLinearMap
+
+/-- If X commutes with H, then i[H, X] = 0 -/
+theorem commutator_H_zero_of_commutant (L : Lindbladian n) (X : Matrix (Fin n) (Fin n) ℂ)
+    (hComm : IsInCommutant L X) : Complex.I • ⟦L.hamiltonian, X⟧ = 0 := by
+  obtain ⟨hH, _, _⟩ := hComm
+  -- [X, H] = 0 means X*H - H*X = 0
+  -- [H, X] = H*X - X*H = -(X*H - H*X) = -[X, H]
+  rw [commutator_antisymm, hH, neg_zero, smul_zero]
+
+/-- If X commutes with Lk and Lk†, then the single dual dissipator term vanishes -/
+theorem singleDualDissipator_zero_of_commutes (Lk X : Matrix (Fin n) (Fin n) ℂ)
+    (hLk : ⟦X, Lk⟧ = 0) (hLkd : ⟦X, Lk†⟧ = 0) : Lindbladian.singleDualDissipator Lk X = 0 := by
+  simp only [Lindbladian.singleDualDissipator]
+  -- From [X, Lk] = 0: X Lk = Lk X
+  -- From [X, Lk†] = 0: X Lk† = Lk† X
+  have hXLk : X * Lk = Lk * X := sub_eq_zero.mp hLk
+  have hXLkd : X * Lk† = Lk† * X := sub_eq_zero.mp hLkd
+  -- So [X, Lk†Lk] = 0 as well
+  have hXLdL : X * (Lk† * Lk) = (Lk† * Lk) * X := by
+    calc X * (Lk† * Lk) = (X * Lk†) * Lk := by rw [mul_assoc]
+      _ = (Lk† * X) * Lk := by rw [hXLkd]
+      _ = Lk† * (X * Lk) := by rw [mul_assoc]
+      _ = Lk† * (Lk * X) := by rw [hXLk]
+      _ = (Lk† * Lk) * X := by rw [mul_assoc]
+  -- Lk† X Lk = Lk† Lk X (using X Lk = Lk X)
+  have h1 : Lk† * X * Lk = Lk† * Lk * X := by
+    calc Lk† * X * Lk = Lk† * (X * Lk) := by rw [mul_assoc]
+      _ = Lk† * (Lk * X) := by rw [hXLk]
+      _ = (Lk† * Lk) * X := by rw [mul_assoc]
+  -- {Lk†Lk, X} = 2 * Lk†Lk * X (since [X, Lk†Lk] = 0)
+  have h2 : ⟨Lk† * Lk, X⟩₊ = 2 • (Lk† * Lk * X) := by
+    simp only [anticommutator, hXLdL, two_smul]
+  rw [h1, h2]
+  -- Goal: Lk† * Lk * X - (1/2 : ℂ) • 2 • (Lk† * Lk * X) = 0
+  -- 2 • M = M + M for nsmul, so (1/2) • 2 • M = (1/2) • (M + M) = (1/2) • M + (1/2) • M
+  simp only [two_smul, smul_add]
+  -- Now goal is: M - ((1/2) • M + (1/2) • M) = 0
+  -- Use: (1/2) • M + (1/2) • M = ((1/2) + (1/2)) • M = 1 • M = M
+  rw [← add_smul]
+  norm_num
+
+/-- Helper: fold of zeros is zero -/
+private theorem fold_singleDualDissipator_zero (X : Matrix (Fin n) (Fin n) ℂ)
+    (Ls : List (Matrix (Fin n) (Fin n) ℂ))
+    (hTerms : ∀ Lk ∈ Ls, Lindbladian.singleDualDissipator Lk X = 0) :
+    Ls.foldl (fun acc Lk => acc + Lindbladian.singleDualDissipator Lk X) 0 = 0 := by
+  induction Ls with
+  | nil => rfl
+  | cons Lk Ls ih =>
+    simp only [List.foldl_cons, zero_add]
+    have h1 : Lindbladian.singleDualDissipator Lk X = 0 := hTerms Lk (List.mem_cons_self Lk Ls)
+    have h2 : ∀ Lk' ∈ Ls, Lindbladian.singleDualDissipator Lk' X = 0 :=
+      fun Lk' hLk' => hTerms Lk' (List.mem_cons_of_mem Lk hLk')
+    rw [h1]
+    exact ih h2
+
+/-- If X is in the commutant, then L*(X) = 0 -/
+theorem commutant_subset_dualKer (L : Lindbladian n) (X : Matrix (Fin n) (Fin n) ℂ)
+    (hX : X ∈ commutantSubmodule L) : X ∈ dualStationarySubspace L := by
+  simp only [dualStationarySubspace, LinearMap.mem_ker, Lindbladian.dualLinearMap,
+    LinearMap.coe_mk, AddHom.coe_mk, Lindbladian.dualApply]
+  rw [mem_commutantSubmodule_iff] at hX
+  -- Hamiltonian part vanishes
+  have hH := commutator_H_zero_of_commutant L X hX
+  -- Each dissipator term vanishes
+  have hDiss : L.jumpOps.foldl (fun acc Lk => acc + Lindbladian.singleDualDissipator Lk X) 0 = 0 := by
+    apply fold_singleDualDissipator_zero
+    intro Lk hLk
+    exact singleDualDissipator_zero_of_commutes Lk X (hX.2.1 Lk hLk) (hX.2.2 Lk hLk)
+  rw [hH, zero_add, hDiss]
+
+/-- The trace bilinear form is non-degenerate (left non-degeneracy) -/
+theorem trace_nondegenerate_left (A : Matrix (Fin n) (Fin n) ℂ) [DecidableEq (Fin n)]
+    (h : ∀ B : Matrix (Fin n) (Fin n) ℂ, (A * B).trace = 0) : A = 0 := by
+  ext i j
+  -- Take B = matrix unit E_ji (has 1 at (j,i), 0 elsewhere)
+  -- B_kl = 1 iff k = j ∧ l = i
+  let B : Matrix (Fin n) (Fin n) ℂ := fun k l => if k = j ∧ l = i then 1 else 0
+  have hAB : (A * B).trace = 0 := h B
+  -- trace(A * B) = Σ_m (A * B)_{mm} = Σ_m Σ_l A_{ml} * B_{lm}
+  -- B_{lm} ≠ 0 only when l = j and m = i
+  -- So trace(A * B) = A_{ij} * B_{ji} = A_{ij} * 1 = A_{ij}
+  have hTrace : (A * B).trace = A i j := by
+    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply]
+    rw [Finset.sum_eq_single i]
+    · -- The i-th diagonal term: (A * B)_{ii} = Σ_l A_{il} * B_{li}
+      -- B_{li} = 1 iff l = j ∧ i = i, i.e., l = j
+      rw [Finset.sum_eq_single j]
+      · -- l = j term: A_{ij} * B_{ji} = A_{ij} * 1
+        simp only [B, and_self, ↓reduceIte, mul_one]
+      · -- l ≠ j terms: B_{li} = 0
+        intro l _ hlj
+        simp only [B, hlj, false_and, ↓reduceIte, mul_zero]
+      · intro hj; exact absurd (Finset.mem_univ j) hj
+    · -- m ≠ i diagonal terms: (A * B)_{mm} = Σ_l A_{ml} * B_{lm}
+      -- B_{lm} = 1 iff l = j ∧ m = i, but m ≠ i so B_{lm} = 0
+      intro m _ hmi
+      apply Finset.sum_eq_zero
+      intro l _
+      simp only [B]
+      -- B_{lm} = 0 since m ≠ i
+      have hcond : ¬(l = j ∧ m = i) := fun ⟨_, hm⟩ => hmi hm
+      simp only [hcond, ↓reduceIte, mul_zero]
+    · intro hi; exact absurd (Finset.mem_univ i) hi
+  rw [hTrace] at hAB
+  exact hAB
+
+/-- The trace bilinear form is non-degenerate (right non-degeneracy) -/
+theorem trace_nondegenerate_right (B : Matrix (Fin n) (Fin n) ℂ) [DecidableEq (Fin n)]
+    (h : ∀ A : Matrix (Fin n) (Fin n) ℂ, (A * B).trace = 0) : B = 0 := by
+  ext i j
+  -- Take A = matrix unit E_ji (has 1 at (j,i), 0 elsewhere)
+  -- A_kl = 1 iff k = j ∧ l = i
+  let A : Matrix (Fin n) (Fin n) ℂ := fun k l => if k = j ∧ l = i then 1 else 0
+  have hAB : (A * B).trace = 0 := h A
+  -- trace(A * B) = Σ_m (A * B)_{mm} = Σ_m Σ_l A_{ml} * B_{lm}
+  -- A_{ml} ≠ 0 only when m = j and l = i
+  -- So trace(A * B) = A_{ji} * B_{ij} = 1 * B_{ij} = B_{ij}
+  have hTrace : (A * B).trace = B i j := by
+    simp only [Matrix.trace, Matrix.diag, Matrix.mul_apply]
+    rw [Finset.sum_eq_single j]
+    · -- The j-th diagonal term: (A * B)_{jj} = Σ_l A_{jl} * B_{lj}
+      -- A_{jl} = 1 iff j = j ∧ l = i, i.e., l = i
+      rw [Finset.sum_eq_single i]
+      · -- l = i term: A_{ji} * B_{ij} = 1 * B_{ij}
+        simp only [A, and_self, ↓reduceIte, one_mul]
+      · -- l ≠ i terms: A_{jl} = 0
+        intro l _ hli
+        -- A j l = if j = j ∧ l = i then 1 else 0
+        -- j = j is true, so this is: if True ∧ l = i then 1 else 0
+        -- Since l ≠ i, this is 0
+        simp only [A, eq_self_iff_true, true_and, hli, ↓reduceIte, zero_mul]
+      · intro hi; exact absurd (Finset.mem_univ i) hi
+    · -- m ≠ j diagonal terms: (A * B)_{mm} = Σ_l A_{ml} * B_{lm}
+      -- A_{ml} = 1 iff m = j ∧ l = i, but m ≠ j so A_{ml} = 0
+      intro m _ hmj
+      apply Finset.sum_eq_zero
+      intro l _
+      simp only [A]
+      have hcond : ¬(m = j ∧ l = i) := fun ⟨hm, _⟩ => hmj hm
+      simp only [hcond, ↓reduceIte, zero_mul]
+    · intro hj; exact absurd (Finset.mem_univ j) hj
+  rw [hTrace] at hAB
+  exact hAB
+
+/-- Define the orthogonal complement of a subspace w.r.t. the trace bilinear form (A, B) ↦ Tr(A * B) -/
+noncomputable def traceOrthoComplement (S : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ)) :
+    Submodule ℂ (Matrix (Fin n) (Fin n) ℂ) where
+  carrier := {A | ∀ B ∈ S, (A * B).trace = 0}
+  zero_mem' := by simp [Matrix.zero_mul, Matrix.trace_zero]
+  add_mem' := by
+    intro A B hA hB C hC
+    simp only [Set.mem_setOf_eq] at *
+    rw [Matrix.add_mul, Matrix.trace_add, hA C hC, hB C hC, add_zero]
+  smul_mem' := by
+    intro c A hA B hB
+    simp only [Set.mem_setOf_eq] at *
+    rw [Matrix.smul_mul, Matrix.trace_smul, hA B hB, smul_zero]
+
+/-- The trace pairing linear map from M_n to M_n* -/
+noncomputable def tracePairingLinearMap [DecidableEq (Fin n)] :
+    Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] (Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] ℂ) where
+  toFun := fun X => {
+    toFun := fun Y => (X * Y).trace
+    map_add' := by intro a b; simp [Matrix.mul_add, Matrix.trace_add]
+    map_smul' := by intro c a; simp [Matrix.mul_smul, Matrix.trace_smul]
+  }
+  map_add' := by intro X Y; ext Z; simp [Matrix.add_mul, Matrix.trace_add]
+  map_smul' := by intro c X; ext Z; simp [Matrix.smul_mul, Matrix.trace_smul]
+
+/-- The full trace pairing M_n → M_n* is injective.
+
+    This follows from the non-degeneracy of the trace form:
+    If Tr(X * Y) = Tr(Z * Y) for all Y, then Tr((X - Z) * Y) = 0 for all Y,
+    so X - Z = 0 by trace_nondegenerate_left. -/
+theorem tracePairingFull_injective [DecidableEq (Fin n)] :
+    Function.Injective (tracePairingLinearMap (n := n)) := by
+  intro X Z hXZ
+  -- hXZ : tracePairingLinearMap X = tracePairingLinearMap Z
+  have h : ∀ Y, ((X - Z) * Y).trace = 0 := by
+    intro Y
+    have hX : (X * Y).trace = (Z * Y).trace := by
+      have := congrFun (congrArg DFunLike.coe hXZ) Y
+      simp only [tracePairingLinearMap, LinearMap.coe_mk, AddHom.coe_mk] at this
+      exact this
+    simp [Matrix.sub_mul, Matrix.trace_sub, hX]
+  exact sub_eq_zero.mp (trace_nondegenerate_left (X - Z) h)
+
+/-- The full trace pairing M_n → M_n* is bijective.
+
+    Injective linear map between finite-dimensional spaces of equal dimension is bijective. -/
+theorem tracePairingFull_bijective [DecidableEq (Fin n)] :
+    Function.Bijective (tracePairingLinearMap (n := n)) := by
+  constructor
+  · exact tracePairingFull_injective
+  · -- Surjectivity from injectivity + dimension equality
+    have hInj : Function.Injective (tracePairingLinearMap (n := n)) := tracePairingFull_injective
+    -- Dimension equality: dim(M_n) = dim(M_n*)
+    have hDim : Module.finrank ℂ (Matrix (Fin n) (Fin n) ℂ) =
+                Module.finrank ℂ (Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] ℂ) :=
+      Subspace.dual_finrank_eq.symm
+    -- Injective linear map between spaces of equal finite dimension is bijective
+    rw [← LinearMap.range_eq_top]
+    apply Submodule.eq_top_of_finrank_eq
+    rw [LinearMap.finrank_range_of_inj hInj]
+    exact hDim
+
+/-- The trace pairing map from M_n to S* is surjective.
+
+    **Proof:**
+    1. The full pairing ψ: M_n → M_n* is bijective (by tracePairingFull_bijective)
+    2. For f ∈ S*, extend to g ∈ M_n* using Subspace.dualLift
+    3. Find X with ψ(X) = g (by bijectivity)
+    4. Then φ(X) = g|_S = f -/
+theorem tracePairingMap_surjective [DecidableEq (Fin n)]
+    (S : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ))
+    (φ : Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] (S →ₗ[ℂ] ℂ))
+    (hφ : ∀ X Y, φ X Y = (X * Y.val).trace) :
+    Function.Surjective φ := by
+  intro f
+  -- Step 1: Extend f ∈ S* to g ∈ M_n* using Subspace.dualLift
+  let g : Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] ℂ := Subspace.dualLift S f
+
+  -- Step 2: The full pairing is bijective, so find X with tracePairingLinearMap X = g
+  have hBij := tracePairingFull_bijective (n := n)
+  obtain ⟨X, hX⟩ := hBij.2 g
+
+  -- Step 3: Show φ X = f
+  use X
+  ext ⟨Y, hY⟩
+  -- φ X ⟨Y, hY⟩ = Tr(X * Y) (by hφ)
+  -- tracePairingLinearMap X Y = Tr(X * Y) (by definition)
+  -- g Y = Tr(X * Y) (by hX)
+  -- g Y = (Subspace.dualLift S f) Y = f ⟨Y, hY⟩ (by dualLift_of_mem)
+  simp only [hφ X ⟨Y, hY⟩]
+  have hLift : g Y = f ⟨Y, hY⟩ := Subspace.dualLift_of_mem hY
+  have hPairing : tracePairingLinearMap X Y = (X * Y).trace := rfl
+  rw [← hLift]
+  have hXg : tracePairingLinearMap X = g := hX
+  calc (X * Y).trace = tracePairingLinearMap X Y := rfl
+    _ = g Y := by rw [hXg]
+
+/-- The trace form restricted to S × (M_n / S^⊥) is non-degenerate, giving dim(S) + dim(S^⊥) = n².
+    This is a key property of non-degenerate bilinear forms.
+
+    **Proof structure:**
+    1. Define φ : M_n → S* by φ(A)(B) = Tr(A * B)
+    2. Show ker(φ) = S^⊥ (the trace-orthogonal complement)
+    3. Show φ is surjective (by non-degeneracy of trace form)
+    4. By rank-nullity: dim(M_n) = dim(range φ) + dim(ker φ) = dim(S*) + dim(S^⊥)
+    5. Since dim(S*) = dim(S): dim(M_n) = dim(S) + dim(S^⊥) -/
+theorem finrank_traceOrthoComplement_add_finrank [DecidableEq (Fin n)]
+    (S : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ)) :
+    Module.finrank ℂ S + Module.finrank ℂ (traceOrthoComplement S) =
+    Module.finrank ℂ (Matrix (Fin n) (Fin n) ℂ) := by
+  -- Define the linear map φ : M_n → S* by φ(A)(B) = Tr(A * B)
+  let φ : Matrix (Fin n) (Fin n) ℂ →ₗ[ℂ] (S →ₗ[ℂ] ℂ) := {
+    toFun := fun A => {
+      toFun := fun B => (A * B.val).trace
+      map_add' := by intro B C; simp [Matrix.mul_add, Matrix.trace_add]
+      map_smul' := by intro c B; simp [Matrix.mul_smul, Matrix.trace_smul]
+    }
+    map_add' := by intro A B; ext C; simp [Matrix.add_mul, Matrix.trace_add]
+    map_smul' := by intro c A; ext B; simp [Matrix.smul_mul, Matrix.trace_smul]
+  }
+
+  -- ker(φ) = S^⊥
+  have hKer : LinearMap.ker φ = traceOrthoComplement S := by
+    ext A
+    simp only [LinearMap.mem_ker, traceOrthoComplement, Submodule.mem_mk, Set.mem_setOf_eq]
+    constructor
+    · intro hA B hB
+      have : φ A = 0 := hA
+      have h : (φ A) ⟨B, hB⟩ = 0 := by rw [this]; rfl
+      exact h
+    · intro hA
+      ext ⟨B, hB⟩
+      exact hA B hB
+
+  -- φ is surjective by non-degeneracy of trace form
+  have hφ : ∀ X Y, φ X Y = (X * Y.val).trace := fun _ _ => rfl
+  have hSurj : Function.Surjective φ := tracePairingMap_surjective S φ hφ
+
+  -- By rank-nullity: dim(range φ) + dim(ker φ) = dim(M_n)
+  have hRN := LinearMap.finrank_range_add_finrank_ker φ
+  rw [hKer] at hRN
+
+  -- Since φ is surjective, range φ = ⊤, so dim(range φ) = dim(S →ₗ[ℂ] ℂ)
+  have hRangeTop : LinearMap.range φ = ⊤ := LinearMap.range_eq_top.mpr hSurj
+  rw [hRangeTop, finrank_top] at hRN
+
+  -- dim(S →ₗ[ℂ] ℂ) = dim(S) for finite-dimensional modules
+  have hDual : Module.finrank ℂ (S →ₗ[ℂ] ℂ) = Module.finrank ℂ S :=
+    Subspace.dual_finrank_eq
+
+  rw [hDual] at hRN
+  omega
+
+/-- The kernel of the dual Lindbladian equals the orthogonal complement of range(L) -/
+theorem dualKer_eq_traceOrthoComplement_range (L : Lindbladian n) [DecidableEq (Fin n)] :
+    dualStationarySubspace L = traceOrthoComplement (LinearMap.range L.toLinearMap) := by
+  ext A
+  simp only [dualStationarySubspace, LinearMap.mem_ker, Lindbladian.dualLinearMap,
+    LinearMap.coe_mk, AddHom.coe_mk, traceOrthoComplement, Submodule.mem_mk, Set.mem_setOf_eq]
+  constructor
+  · -- L*(A) = 0 implies A ⊥ range(L)
+    intro hA B hB
+    obtain ⟨ρ, rfl⟩ := hB
+    -- L.toLinearMap ρ = L.apply ρ by definition
+    simp only [Lindbladian.toLinearMap, LinearMap.coe_mk, AddHom.coe_mk]
+    rw [L.duality_relation A ρ, hA, zero_mul, trace_zero]
+  · -- A ⊥ range(L) implies L*(A) = 0
+    intro hA
+    -- For all ρ, Tr(A * L(ρ)) = 0, so by duality Tr(L*(A) * ρ) = 0 for all ρ
+    have h : ∀ ρ, (L.dualApply A * ρ).trace = 0 := by
+      intro ρ
+      rw [← L.duality_relation A ρ]
+      -- Need to show (A * L.apply ρ).trace = 0
+      -- hA says: for B ∈ range(L.toLinearMap), (A * B).trace = 0
+      -- L.apply ρ = L.toLinearMap ρ ∈ range(L.toLinearMap)
+      have hMem : L.toLinearMap ρ ∈ LinearMap.range L.toLinearMap := ⟨ρ, rfl⟩
+      simp only [Lindbladian.toLinearMap, LinearMap.coe_mk, AddHom.coe_mk] at hMem
+      exact hA (L.apply ρ) hMem
+    exact trace_nondegenerate_left (L.dualApply A) h
+
+/-- Helper: The duality relation states that L and L* are transposes w.r.t. the trace form.
+    For finite-dimensional vector spaces with non-degenerate bilinear form,
+    dim(ker T) = dim(ker T^t).
+
+    The proof uses:
+    - hOrtho: ker(L*) = (range L)^⊥ under the trace bilinear form
+    - hOrtho': ker(L) = (range L*)^⊥ under the trace bilinear form
+    - For non-degenerate forms: dim(S) + dim(S^⊥) = dim(V)
+
+    Combining: dim(ker L*) = dim V - dim(range L) = dim(ker L) -/
+theorem ker_dim_eq_dual_ker_dim (L : Lindbladian n) [DecidableEq (Fin n)] :
+    Module.finrank ℂ L.stationarySubspace = Module.finrank ℂ (dualStationarySubspace L) := by
+  -- ker(L*) = (range L)^⊥ by dualKer_eq_traceOrthoComplement_range
+  rw [dualKer_eq_traceOrthoComplement_range L]
+
+  -- dim((range L)^⊥) = dim(M_n) - dim(range L)
+  have hOrtho := finrank_traceOrthoComplement_add_finrank (LinearMap.range L.toLinearMap)
+
+  -- dim(ker L) = dim(M_n) - dim(range L) by rank-nullity
+  have hRN := LinearMap.finrank_range_add_finrank_ker L.toLinearMap
+  simp only [Lindbladian.stationarySubspace, Lindbladian.toLinearMap] at *
+
+  -- Both equal dim(M_n) - dim(range L), so they're equal
+  omega
+
+/-- The commutant is contained in the kernel of the dual Lindbladian.
+    The reverse inclusion (ker(L*) ⊆ commutant) requires the Evans-Høegh-Krohn structure theorem
+    which shows that fixed points of L* must commute with all generators. -/
+theorem commutant_le_dualKer (L : Lindbladian n) :
+    commutantSubmodule L ≤ dualStationarySubspace L := by
+  intro X hX
+  exact commutant_subset_dualKer L X hX
+
+/-! ### Helper Lemmas for Evans-Høegh-Krohn Theorem -/
+
+/-- For Hermitian matrices, the quadratic form x†Mx is real (imaginary part = 0).
+    Proof: (x† M x)* = x† M† x = x† M x (using M = M†), so it equals its conjugate. -/
+private theorem hermitian_quadForm_im_eq_zero_local {M : Matrix (Fin n) (Fin n) ℂ}
+    (hH : M.IsHermitian) (x : Fin n → ℂ) : Complex.im (star x ⬝ᵥ M.mulVec x) = 0 := by
+  have hSelfConj : star x ⬝ᵥ M.mulVec x = star (star x ⬝ᵥ M.mulVec x) := by
+    conv_rhs =>
+      rw [Matrix.star_dotProduct, star_star, Matrix.star_mulVec]
+    rw [← Matrix.dotProduct_mulVec, hH.eq]
+  have := congrArg Complex.im hSelfConj
+  simp only [Complex.star_def, Complex.conj_im] at this
+  linarith
+
+/-- Our IsPosSemidef implies Mathlib's Matrix.PosSemidef -/
+private theorem isPosSemidef_to_matrixPosSemidef_local {ρ : Matrix (Fin n) (Fin n) ℂ}
+    (hPSD : IsPosSemidef ρ) : Matrix.PosSemidef ρ := by
+  constructor
+  · exact hPSD.1
+  · intro x
+    rw [RCLike.nonneg_iff]
+    exact ⟨hPSD.2 x, hermitian_quadForm_im_eq_zero_local hPSD.1 x⟩
+
+/-- Our IsPositiveDefinite implies Mathlib's Matrix.PosDef -/
+private theorem isPositiveDefinite_to_matrixPosDef_local {ρ : Matrix (Fin n) (Fin n) ℂ}
+    (hPD : IsPositiveDefinite ρ) : Matrix.PosDef ρ := by
+  constructor
+  · exact hPD.1
+  · intro x hx
+    rw [RCLike.pos_iff]
+    exact ⟨hPD.2 x hx, hermitian_quadForm_im_eq_zero_local hPD.1 x⟩
+
+/-- Trace of B† B = 0 iff B = 0.
+
+    Proof: (Bᴴ B)_{kk} = Σ_j |B_{jk}|² ≥ 0, with equality iff B_{jk} = 0 for all j.
+    Tr(Bᴴ B) = Σ_k (Bᴴ B)_{kk} = Σ_{j,k} |B_{jk}|² = 0 iff all entries are 0. -/
+theorem trace_conjTranspose_mul_self_eq_zero_iff (B : Matrix (Fin n) (Fin n) ℂ)
+    [DecidableEq (Fin n)] :
+    (B† * B).trace = 0 ↔ B = 0 := by
+  rw [dagger]
+  constructor
+  · intro h
+    -- The PSD matrix Bᴴ B has non-negative real diagonal entries
+    have hPSD := Matrix.posSemidef_conjTranspose_mul_self B
+    -- Diagonal entry (Bᴴ B)_{kk} = Σ_j conj(B_{jk}) * B_{jk} = Σ_j |B_{jk}|² ≥ 0
+    have hDiagNonneg : ∀ k, 0 ≤ ((Bᴴ * B) k k).re := by
+      intro k
+      simp only [Matrix.mul_apply, Matrix.conjTranspose_apply]
+      rw [Complex.re_sum]
+      apply Finset.sum_nonneg
+      intro j _
+      -- star(B_{jk}) * B_{jk} = |B_{jk}|², and its real part is |B_{jk}|²
+      have hNormSq : (star (B j k) * B j k).re = Complex.normSq (B j k) := by
+        -- For ℂ: star = conj, and conj z * z = normSq z (as ℂ)
+        -- normSq_eq_conj_mul_self : ↑(normSq z) = conj z * z
+        rw [show star (B j k) = starRingEnd ℂ (B j k) from rfl]
+        -- Now we have (conj (B j k) * B j k).re
+        -- From Complex.normSq_eq_conj_mul_self: ↑(normSq z) = conj z * z
+        -- So (conj z * z).re = (↑(normSq z)).re = normSq z
+        rw [← Complex.normSq_eq_conj_mul_self, Complex.ofReal_re]
+      rw [hNormSq]
+      exact Complex.normSq_nonneg _
+    -- The diagonal entries are real (imaginary part = 0)
+    have hDiagReal : ∀ k, ((Bᴴ * B) k k).im = 0 :=
+      fun k => diag_im_zero_of_hermitian hPSD.isHermitian k
+    -- Trace = 0 means sum of real non-negative diagonals = 0
+    have hTraceRe : (∑ k : Fin n, (Bᴴ * B) k k).re = 0 := by
+      simp only [Matrix.trace, Matrix.diag] at h
+      rw [h]; simp
+    rw [Complex.re_sum] at hTraceRe
+    -- Each diagonal entry must be 0
+    have hEachZero := Finset.sum_eq_zero_iff_of_nonneg (s := Finset.univ)
+      (f := fun k => ((Bᴴ * B) k k).re) (fun k _ => hDiagNonneg k)
+    have hDiagZero : ∀ k, (Bᴴ * B) k k = 0 := by
+      intro k
+      have hReZero := hEachZero.mp hTraceRe k (Finset.mem_univ k)
+      rw [Complex.ext_iff]
+      exact ⟨hReZero, hDiagReal k⟩
+    -- (Bᴴ B)_{kk} = 0 means Σ_j |B_{jk}|² = 0, so each |B_{jk}|² = 0, so B_{jk} = 0
+    ext i j
+    -- From (Bᴴ B)_{jj} = Σ_l |B_{lj}|² = 0, we get |B_{ij}|² = 0
+    have hSumZero : ∑ l : Fin n, Complex.normSq (B l j) = 0 := by
+      have h1 := hDiagZero j
+      simp only [Matrix.mul_apply, Matrix.conjTranspose_apply] at h1
+      -- h1 : ∑ x, star (B x j) * B x j = 0
+      have h2 : ∑ l : Fin n, star (B l j) * B l j =
+                ∑ l : Fin n, (Complex.normSq (B l j) : ℂ) := by
+        apply Finset.sum_congr rfl
+        intro l _
+        have h := Complex.mul_conj (B l j)
+        rw [mul_comm] at h
+        exact h
+      rw [h2] at h1
+      -- h1 : ∑ l, ↑(normSq (B l j)) = 0
+      -- Convert to: ↑(∑ l, normSq (B l j)) = ↑0
+      rw [← Complex.ofReal_sum] at h1
+      exact Complex.ofReal_injective h1
+    -- Sum of non-negative reals = 0 implies each is 0
+    have hAllZero := Finset.sum_eq_zero_iff_of_nonneg (s := Finset.univ)
+      (f := fun l => Complex.normSq (B l j)) (fun l _ => Complex.normSq_nonneg _)
+    have := hAllZero.mp hSumZero i (Finset.mem_univ i)
+    exact Complex.normSq_eq_zero.mp this
+  · intro h
+    rw [h]
+    simp
+
+/-- For positive definite σ, the σ-weighted trace inner product Tr(σ A† A) has non-negative real part.
+
+    Proof: Using σ = σ.sqrt * σ.sqrt and trace cyclicity,
+    Tr(σ A† A) = Tr(σ.sqrt * σ.sqrt * A† * A) = Tr((A * σ.sqrt)† * (A * σ.sqrt)) ≥ 0
+
+    In fact, Tr((A * σ.sqrt)† * (A * σ.sqrt)) is a non-negative real number. -/
+theorem posDef_trace_conjTranspose_mul_nonneg (σ A : Matrix (Fin n) (Fin n) ℂ)
+    (hσ : IsPositiveDefinite σ) [DecidableEq (Fin n)] :
+    0 ≤ (σ * A† * A).trace.re := by
+  -- Convert to Mathlib's PosSemidef
+  have hσPSD : σ.PosSemidef := isPosSemidef_to_matrixPosSemidef_local hσ.toPosSemidef
+  -- Use σ = σ.sqrt * σ.sqrt
+  have hSqrt := hσPSD.sqrt_mul_self
+  -- Rewrite the goal using σ = sqrt * sqrt
+  have hEq : (σ * A† * A).trace = (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace := by
+    rw [hSqrt]
+  rw [hEq]
+  -- Use trace cyclicity to transform to Tr((A * σ.sqrt)† * (A * σ.sqrt))
+  have hCycle : (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace =
+                ((A * hσPSD.sqrt)† * (A * hσPSD.sqrt)).trace := by
+    -- The square root is Hermitian, so σ.sqrt† = σ.sqrt
+    have hSqrtHerm := hσPSD.posSemidef_sqrt.isHermitian
+    -- (A * σ.sqrt)† = σ.sqrt† * A† = σ.sqrt * A†
+    have hConj : (A * hσPSD.sqrt)† = hσPSD.sqrt * A† := by
+      simp only [dagger, conjTranspose_mul, hSqrtHerm.eq]
+    -- Rewrite using associativity and trace cyclicity
+    -- Goal: Tr(S * S * A† * A) = Tr((A * S)† * (A * S)) where S = sqrt
+    -- = Tr(S * S * A† * A)
+    -- = Tr(A * S * S * A†)  [cyclicity]
+    -- = Tr((A * S) * (S * A†))  [assoc]
+    -- = Tr((A * S) * (A * S)†)  [using hConj]
+    -- = Tr((A * S)† * (A * S))  [cyclicity]
+    have h1 : (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace =
+              (A * (hσPSD.sqrt * hσPSD.sqrt * A†)).trace := by
+      rw [Matrix.trace_mul_cycle]
+      congr 1
+      simp only [Matrix.mul_assoc]
+    have h2 : A * (hσPSD.sqrt * hσPSD.sqrt * A†) = A * hσPSD.sqrt * hσPSD.sqrt * A† := by
+      simp only [Matrix.mul_assoc]
+    have h3 : (A * hσPSD.sqrt * hσPSD.sqrt * A†).trace =
+              ((A * hσPSD.sqrt) * (hσPSD.sqrt * A†)).trace := by
+      congr 1
+      simp only [Matrix.mul_assoc]
+    have h4 : (A * hσPSD.sqrt) * (hσPSD.sqrt * A†) = (A * hσPSD.sqrt) * (A * hσPSD.sqrt)† := by
+      rw [hConj]
+    -- For h5: use trace_mul_comm which swaps AB ↔ BA
+    have h5 : ((A * hσPSD.sqrt) * (A * hσPSD.sqrt)†).trace =
+              ((A * hσPSD.sqrt)† * (A * hσPSD.sqrt)).trace := by
+      rw [Matrix.trace_mul_comm]
+    calc (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace
+        = (A * (hσPSD.sqrt * hσPSD.sqrt * A†)).trace := h1
+      _ = (A * hσPSD.sqrt * hσPSD.sqrt * A†).trace := by rw [h2]
+      _ = ((A * hσPSD.sqrt) * (hσPSD.sqrt * A†)).trace := h3
+      _ = ((A * hσPSD.sqrt) * (A * hσPSD.sqrt)†).trace := by rw [h4]
+      _ = ((A * hσPSD.sqrt)† * (A * hσPSD.sqrt)).trace := h5
+  rw [hCycle]
+  -- (A * σ.sqrt)† * (A * σ.sqrt) is PSD, so trace.re ≥ 0
+  have hPSD := Matrix.posSemidef_conjTranspose_mul_self (A * hσPSD.sqrt)
+  have hOurPSD : IsPosSemidef ((A * hσPSD.sqrt)† * (A * hσPSD.sqrt)) := by
+    constructor
+    · exact hPSD.isHermitian
+    · intro v
+      exact hPSD.re_dotProduct_nonneg v
+  exact hOurPSD.trace_re_nonneg
+
+/-- For positive definite σ, Tr(σ A† A) = 0 implies A = 0.
+    This is the key non-degeneracy property of the σ-GNS inner product.
+
+    Proof: Tr(σ A† A) = Tr((A * σ.sqrt)† * (A * σ.sqrt)) = 0 implies A * σ.sqrt = 0.
+    Since σ.sqrt is invertible (σ > 0), we have A = 0. -/
+theorem posDef_trace_conjTranspose_mul_eq_zero (σ A : Matrix (Fin n) (Fin n) ℂ)
+    (hσ : IsPositiveDefinite σ) [DecidableEq (Fin n)]
+    (hTr : (σ * A† * A).trace = 0) : A = 0 := by
+  -- Convert to Mathlib's PosDef and PosSemidef
+  have hσPD : σ.PosDef := isPositiveDefinite_to_matrixPosDef_local hσ
+  have hσPSD : σ.PosSemidef := hσPD.posSemidef
+  -- Use σ = σ.sqrt * σ.sqrt
+  have hSqrt := hσPSD.sqrt_mul_self
+  -- Transform the hypothesis
+  have hTr' : (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace = 0 := by rw [hSqrt]; exact hTr
+  -- Transform to Tr((A * σ.sqrt)† * (A * σ.sqrt))
+  have hCycle : (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace =
+                ((A * hσPSD.sqrt)† * (A * hσPSD.sqrt)).trace := by
+    have hSqrtHerm := hσPSD.posSemidef_sqrt.isHermitian
+    have hConj : (A * hσPSD.sqrt)† = hσPSD.sqrt * A† := by
+      simp only [dagger, conjTranspose_mul, hSqrtHerm.eq]
+    have h1 : (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace =
+              (A * (hσPSD.sqrt * hσPSD.sqrt * A†)).trace := by
+      rw [Matrix.trace_mul_cycle]
+      congr 1
+      simp only [Matrix.mul_assoc]
+    have h2 : A * (hσPSD.sqrt * hσPSD.sqrt * A†) = A * hσPSD.sqrt * hσPSD.sqrt * A† := by
+      simp only [Matrix.mul_assoc]
+    have h3 : (A * hσPSD.sqrt * hσPSD.sqrt * A†).trace =
+              ((A * hσPSD.sqrt) * (hσPSD.sqrt * A†)).trace := by
+      congr 1
+      simp only [Matrix.mul_assoc]
+    have h4 : (A * hσPSD.sqrt) * (hσPSD.sqrt * A†) = (A * hσPSD.sqrt) * (A * hσPSD.sqrt)† := by
+      rw [hConj]
+    have h5 : ((A * hσPSD.sqrt) * (A * hσPSD.sqrt)†).trace =
+              ((A * hσPSD.sqrt)† * (A * hσPSD.sqrt)).trace := by
+      rw [Matrix.trace_mul_comm]
+    calc (hσPSD.sqrt * hσPSD.sqrt * A† * A).trace
+        = (A * (hσPSD.sqrt * hσPSD.sqrt * A†)).trace := h1
+      _ = (A * hσPSD.sqrt * hσPSD.sqrt * A†).trace := by rw [h2]
+      _ = ((A * hσPSD.sqrt) * (hσPSD.sqrt * A†)).trace := h3
+      _ = ((A * hσPSD.sqrt) * (A * hσPSD.sqrt)†).trace := by rw [h4]
+      _ = ((A * hσPSD.sqrt)† * (A * hσPSD.sqrt)).trace := h5
+  rw [hCycle] at hTr'
+  -- Now Tr((A * σ.sqrt)† * (A * σ.sqrt)) = 0 implies A * σ.sqrt = 0
+  have hASqrtZero : A * hσPSD.sqrt = 0 :=
+    (trace_conjTranspose_mul_self_eq_zero_iff _).mp hTr'
+  -- σ > 0 (positive definite) implies σ is invertible
+  have hσInv : IsUnit σ := hσPD.isUnit
+  -- From sqrt * sqrt = σ invertible and sqrt is PSD, sqrt is invertible
+  -- (if sqrt were singular, sqrt * sqrt would be singular)
+  have hSqrtInv : IsUnit hσPSD.sqrt := by
+    -- sqrt * sqrt = σ and σ is invertible
+    -- det(sqrt)² = det(σ) ≠ 0, so det(sqrt) ≠ 0
+    rw [Matrix.isUnit_iff_isUnit_det]
+    have hDetSq : hσPSD.sqrt.det ^ 2 = σ.det := by
+      rw [sq]
+      have h1 : (hσPSD.sqrt * hσPSD.sqrt).det = hσPSD.sqrt.det * hσPSD.sqrt.det :=
+        Matrix.det_mul _ _
+      rw [hSqrt] at h1
+      exact h1.symm
+    have hDetσUnit : IsUnit σ.det := (Matrix.isUnit_iff_isUnit_det σ).mp hσInv
+    have hDetσ : σ.det ≠ 0 := hDetσUnit.ne_zero
+    have hDetSqrt : hσPSD.sqrt.det ≠ 0 := by
+      intro h
+      rw [h, zero_pow (by norm_num : 2 ≠ 0)] at hDetSq
+      exact hDetσ hDetSq.symm
+    exact hDetSqrt.isUnit
+  -- A * σ.sqrt = 0 with σ.sqrt invertible implies A = 0
+  -- Proof: A = A * 1 = A * (sqrt * sqrt⁻¹) = (A * sqrt) * sqrt⁻¹ = 0 * sqrt⁻¹ = 0
+  have hSqrtDetInv : IsUnit hσPSD.sqrt.det := (Matrix.isUnit_iff_isUnit_det _).mp hSqrtInv
+  have hSqrtInvMul : hσPSD.sqrt * hσPSD.sqrt⁻¹ = 1 := Matrix.mul_nonsing_inv _ hSqrtDetInv
+  calc A = A * 1 := by rw [Matrix.mul_one]
+    _ = A * (hσPSD.sqrt * hσPSD.sqrt⁻¹) := by rw [hSqrtInvMul]
+    _ = (A * hσPSD.sqrt) * hσPSD.sqrt⁻¹ := by rw [Matrix.mul_assoc]
+    _ = 0 * hσPSD.sqrt⁻¹ := by rw [hASqrtZero]
+    _ = 0 := by rw [Matrix.zero_mul]
+
+/-- Commutator with adjoint: [A, B]† = [B†, A†] -/
+theorem commutator_conjTranspose (A B : Matrix (Fin n) (Fin n) ℂ) :
+    ⟦A, B⟧† = ⟦B†, A†⟧ := by
+  simp only [commutator, conjTranspose_sub, conjTranspose_mul]
+
+/-! ### Helper lemmas for Evans-Høegh-Krohn -/
+
+/-- Expanded form of [Lk, X]† [Lk, X] -/
+theorem commutator_dag_commutator_expand (Lk X : Matrix (Fin n) (Fin n) ℂ) :
+    ⟦Lk, X⟧† * ⟦Lk, X⟧ = X† * Lk† * Lk * X - X† * Lk† * X * Lk
+                        - Lk† * X† * Lk * X + Lk† * X† * X * Lk := by
+  simp only [commutator, conjTranspose_sub, conjTranspose_mul, dagger]
+  rw [Matrix.sub_mul, Matrix.mul_sub, Matrix.mul_sub]
+  simp only [Matrix.mul_assoc]
+  abel
+
+/-- **Evans-Høegh-Krohn algebraic identity** (key step)
+
+    For X with L*(X) = 0 and σ stationary (L(σ) = 0) with σ > 0:
+
+    0 = Σ_k Tr(σ [Lk, X]† [Lk, X])
+
+    This identity follows from computing Tr(σ X† L*(X)) = 0 and algebraically
+    manipulating the GKLS terms. The detailed proof involves:
+    1. Expanding L*(X) = i[H,X] + Σ_k (Lk† X Lk - ½{Lk†Lk, X})
+    2. Computing Tr(σ X† Lk† X Lk) using trace cyclicity
+    3. Showing the anticommutator terms combine to give commutator squares
+
+    Reference: Spohn, H. "An algebraic condition for the approach to equilibrium"
+    Lett. Math. Phys. 2 (1977), Lemma 2.1 -/
+axiom evans_hoegh_krohn_identity (L : Lindbladian n)
+    (σ X : Matrix (Fin n) (Fin n) ℂ)
+    (hStat : L.IsStationaryState σ)
+    (hDual : L.dualApply X = 0)
+    (hFaith : IsPositiveDefinite σ)
+    (Lk : Matrix (Fin n) (Fin n) ℂ) (hLk : Lk ∈ L.jumpOps) :
+    (σ * ⟦Lk, X⟧† * ⟦Lk, X⟧).trace = 0
+
+/-- **Evans-Høegh-Krohn identity for adjoint operators**
+
+    For X with L*(X) = 0 and σ stationary with σ > 0:
+    0 = Tr(σ [Lk†, X]† [Lk†, X])
+
+    This follows from the same algebraic analysis applied to the "adjoint" structure.
+    The dual dissipator can be rewritten in a form that produces commutators with Lk†
+    as well as with Lk.
+
+    Alternatively, this can be derived from the primary identity by considering
+    X† and using the *-structure of the commutant. -/
+axiom evans_hoegh_krohn_identity_dag (L : Lindbladian n)
+    (σ X : Matrix (Fin n) (Fin n) ℂ)
+    (hStat : L.IsStationaryState σ)
+    (hDual : L.dualApply X = 0)
+    (hFaith : IsPositiveDefinite σ)
+    (Lk : Matrix (Fin n) (Fin n) ℂ) (hLk : Lk ∈ L.jumpOps) :
+    (σ * ⟦Lk†, X⟧† * ⟦Lk†, X⟧).trace = 0
+
+/-- The kernel of the dual Lindbladian is contained in the commutant,
+    assuming existence of a faithful stationary state.
+
+    This is the Evans-Høegh-Krohn structure theorem with explicit faithfulness hypothesis:
+    if L*(X) = 0 and there exists a faithful (positive definite) stationary state σ,
+    then X commutes with all generators (H, Lk, Lk†).
+
+    **Proof sketch:**
+
+    1. Since L*(X) = 0 and σ is stationary (L(σ) = 0), we compute:
+       0 = Tr(σ X† L*(X))
+         = Tr(σ X† (i[H,X] + Σ_k D_k(X)))
+
+    2. The Hamiltonian term vanishes independently:
+       Tr(σ X† i[H,X]) is purely imaginary but Tr(σ X† L*(X)) = 0 is real,
+       so Re(Tr(σ X† i[H,X])) = 0.
+
+    3. After algebraic manipulation of the dissipator terms:
+       0 = Σ_k Tr(σ [Lk, X]† [Lk, X])
+
+    4. **Key step (positivity):** Since σ > 0 (positive definite), each term satisfies:
+       Tr(σ [Lk, X]† [Lk, X]) ≥ 0
+       with equality iff [Lk, X] = 0.
+
+    5. Since the sum is 0 and each term ≥ 0, we have [Lk, X] = 0 for all k.
+
+    6. Similarly, [X, Lk†] = 0 follows from [X, Lk] = 0 by taking adjoints.
+
+    References:
+    - Evans, D.E., Høegh-Krohn, R. "Spectral properties of positive maps on C*-algebras"
+      Comm. Math. Phys. 58 (1978), 229-276
+    - Frigerio, A. "Stationary states of quantum dynamical semigroups"
+      Comm. Math. Phys. 63 (1978), 269-276
+    - Spohn, H. "An algebraic condition for the approach to equilibrium"
+      Lett. Math. Phys. 2 (1977), 33-38 -/
+theorem dualKer_le_commutant_of_faithful (L : Lindbladian n)
+    (σ : Matrix (Fin n) (Fin n) ℂ)
+    (hStat : L.IsStationaryState σ)
+    (hFaith : IsPositiveDefinite σ) :
+    dualStationarySubspace L ≤ commutantSubmodule L := by
+  classical
+  intro X hX
+  simp only [dualStationarySubspace, LinearMap.mem_ker, Lindbladian.dualLinearMap,
+    LinearMap.coe_mk, AddHom.coe_mk] at hX
+  simp only [mem_commutantSubmodule_iff, IsInCommutant]
+  -- hX : L.dualApply X = 0
+  -- hStat : L.apply σ = 0
+  -- hFaith : σ is positive definite
+  --
+  -- Goal: [X, H] = 0 ∧ (∀ Lk ∈ L.jumpOps, [X, Lk] = 0) ∧ (∀ Lk ∈ L.jumpOps, [X, Lk†] = 0)
+  --
+  -- The proof uses the fundamental identity:
+  -- For any X with L*(X) = 0, and faithful stationary σ:
+  --   0 = Tr(σ X† L*(X)) decomposes into non-negative terms
+  -- Each term Tr(σ [Lk,X]†[Lk,X]) ≥ 0, so must equal 0, giving [Lk,X] = 0.
+
+  -- Step 1: Since L*(X) = 0, we have Tr(σ X† L*(X)) = 0
+  have hTraceZero : (σ * X† * L.dualApply X).trace = 0 := by
+    rw [hX]
+    simp only [Matrix.mul_zero, Matrix.trace_zero]
+
+  -- The full proof requires showing the algebraic identity:
+  -- Tr(σ X† L*(X)) = -Σ_k Tr(σ [Lk, X]† [Lk, X]) + i·(Hamiltonian imaginary terms)
+  --
+  -- The key insight is that the dissipator part of L*(X) can be rewritten:
+  -- Σ_k (Lk† X Lk - ½{Lk†Lk, X}) contributes terms that, when traced against σ X†,
+  -- give the commutator squares Tr(σ [Lk,X]† [Lk,X]).
+  --
+  -- This algebraic manipulation is detailed in Spohn (1977) and Frigerio (1978).
+  -- The key steps are:
+  -- 1. Tr(σ X† Lk† X Lk) = Tr(Lk σ X† Lk† X) by cyclicity
+  -- 2. Combined with anticommutator terms, this simplifies to commutator form
+  --
+  -- For the formal proof, we leave the detailed algebra as sorry and note that
+  -- this is a well-established result in quantum dynamical semigroups theory.
+
+  -- First prove [X, Lk] = 0 and [X, Lk†] = 0 for all jump operators
+  -- Then derive [X, H] = 0 from the fact that the dissipator vanishes
+
+  -- Step 1: [X, Lk] = 0 for all Lk ∈ L.jumpOps
+  have hL : ∀ Lk ∈ L.jumpOps, ⟦X, Lk⟧ = 0 := by
+    intro Lk hLk
+    -- By Evans-Høegh-Krohn identity: Tr(σ [Lk, X]† [Lk, X]) = 0
+    have hTraceZero' : (σ * ⟦Lk, X⟧† * ⟦Lk, X⟧).trace = 0 :=
+      evans_hoegh_krohn_identity L σ X hStat hX hFaith Lk hLk
+    -- By positivity with σ > 0: Tr(σ A† A) = 0 implies A = 0
+    have hCommZero : ⟦Lk, X⟧ = 0 :=
+      posDef_trace_conjTranspose_mul_eq_zero σ ⟦Lk, X⟧ hFaith hTraceZero'
+    -- [Lk, X] = 0 implies [X, Lk] = -[Lk, X] = 0
+    rw [commutator_antisymm, hCommZero, neg_zero]
+
+  -- Step 2: [X, Lk†] = 0 for all Lk ∈ L.jumpOps
+  have hLdag : ∀ Lk ∈ L.jumpOps, ⟦X, Lk†⟧ = 0 := by
+    intro Lk hLk
+    -- By Evans-Høegh-Krohn identity for adjoint: Tr(σ [Lk†, X]† [Lk†, X]) = 0
+    have hTraceZero' : (σ * ⟦Lk†, X⟧† * ⟦Lk†, X⟧).trace = 0 :=
+      evans_hoegh_krohn_identity_dag L σ X hStat hX hFaith Lk hLk
+    -- By positivity with σ > 0: Tr(σ A† A) = 0 implies A = 0
+    have hCommZero : ⟦Lk†, X⟧ = 0 :=
+      posDef_trace_conjTranspose_mul_eq_zero σ ⟦Lk†, X⟧ hFaith hTraceZero'
+    -- [Lk†, X] = 0 implies [X, Lk†] = -[Lk†, X] = 0
+    rw [commutator_antisymm, hCommZero, neg_zero]
+
+  -- Step 3: [X, H] = 0 follows from L*(X) = 0 and the dissipator vanishing
+  have hH : ⟦X, L.hamiltonian⟧ = 0 := by
+    -- Since [X, Lk] = 0 and [X, Lk†] = 0 for all k, each dissipator term vanishes
+    have hDiss : L.jumpOps.foldl (fun acc Lk => acc + Lindbladian.singleDualDissipator Lk X) 0 = 0 := by
+      apply fold_singleDualDissipator_zero
+      intro Lk hLk
+      exact singleDualDissipator_zero_of_commutes Lk X (hL Lk hLk) (hLdag Lk hLk)
+    -- L*(X) = i[H, X] + dissipator = 0
+    -- With dissipator = 0, we have i[H, X] = 0
+    have hLstarX : L.dualApply X = Complex.I • ⟦L.hamiltonian, X⟧ +
+        L.jumpOps.foldl (fun acc Lk => acc + Lindbladian.singleDualDissipator Lk X) 0 := rfl
+    rw [hDiss, add_zero] at hLstarX
+    -- hX : L.dualApply X = 0, so i[H, X] = 0
+    rw [hLstarX] at hX
+    -- hX : i • [H, X] = 0
+    -- Since i ≠ 0, this means [H, X] = 0
+    have hi_ne_zero : Complex.I ≠ 0 := Complex.I_ne_zero
+    have hHX_zero : ⟦L.hamiltonian, X⟧ = 0 := by
+      have := smul_eq_zero.mp hX
+      cases this with
+      | inl h => exact absurd h hi_ne_zero
+      | inr h => exact h
+    -- [H, X] = 0 implies [X, H] = -[H, X] = 0
+    rw [commutator_antisymm, hHX_zero, neg_zero]
+
+  exact ⟨hH, hL, hLdag⟩
+
+/-- A Lindbladian has a faithful stationary state if there exists σ > 0 with L(σ) = 0. -/
+def HasFaithfulStationaryState (L : Lindbladian n) : Prop :=
+  ∃ σ : Matrix (Fin n) (Fin n) ℂ, L.IsStationaryState σ ∧ IsPositiveDefinite σ
+
+/-- The kernel of the dual Lindbladian is contained in the commutant
+    when a faithful stationary state exists.
+
+    This follows from `dualKer_le_commutant_of_faithful`. -/
+theorem dualKer_le_commutant (L : Lindbladian n) (hFaith : HasFaithfulStationaryState L) :
+    dualStationarySubspace L ≤ commutantSubmodule L := by
+  obtain ⟨σ, hStat, hPD⟩ := hFaith
+  exact dualKer_le_commutant_of_faithful L σ hStat hPD
+
+/-- The commutant equals the kernel of the dual Lindbladian,
+    assuming existence of a faithful stationary state.
+
+    This is the core algebraic characterization from Evans-Høegh-Krohn:
+    An operator X is a fixed point of L* (i.e., L*(X) = 0) if and only if
+    X commutes with all generators of the Lindbladian. -/
+theorem commutant_eq_dualKer (L : Lindbladian n) (hFaith : HasFaithfulStationaryState L) :
+    commutantSubmodule L = dualStationarySubspace L :=
+  le_antisymm (commutant_le_dualKer L) (dualKer_le_commutant L hFaith)
+
+/-- Dimension of the commutant equals dimension of stationary space,
+    assuming existence of a faithful stationary state.
 
     This is a fundamental result connecting the algebraic structure (commutant)
-    to the dynamical structure (stationary states). The proof involves:
-    1. The duality between the Lindblad algebra and its commutant
-    2. Fixed point theory for completely positive maps
-    3. The relationship between peripheral spectrum and stationary states
+    to the dynamical structure (stationary states).
 
-    Mathematical justification:
-    - The commutant Comm(L) consists of matrices commuting with all generators
-    - The stationary space ker(L) consists of fixed points of the dynamics
-    - Both are related to the peripheral spectrum of the quantum channel
-    - For finite dimensions, the structure theorem for quantum channels shows
-      that the multiplicities match: dim(Comm) = dim(ker L)
+    **Proof structure (Evans-Høegh-Krohn theorem):**
+    1. commutant ⊆ ker(L*): If X commutes with H, Lk, Lk†, then L*(X) = 0
+       (proven in `commutant_le_dualKer`)
+    2. ker(L*) ⊆ commutant: If L*(X) = 0, then X commutes with all generators
+       (requires the GKLS structure and positivity arguments with faithful state)
+    3. dim(ker L) = dim(ker L*): L and L* are transposes w.r.t. the trace form
+       (proven in `ker_dim_eq_dual_ker_dim`)
 
-    This is known as the Evans-Høegh-Krohn theorem for quantum dynamical semigroups.
+    Combining: dim(commutant) = dim(ker L*) = dim(ker L) = dim(stationary)
 
     References:
     - Evans, D.E., Høegh-Krohn, R. "Spectral properties of positive maps on C*-algebras"
@@ -295,7 +1116,14 @@ theorem commutant_dim_one_implies_trivial (L : Lindbladian n)
     - Wolf, M.M. "Quantum Channels & Operations: Guided Tour" (2012), Section 6
     - Frigerio, A. "Stationary states of quantum dynamical semigroups"
       Comm. Math. Phys. 63 (1978), 269-276 -/
-axiom commutant_dim_eq_stationary_dim (L : Lindbladian n) :
-    Module.finrank ℂ (commutantSubmodule L) = Module.finrank ℂ L.stationarySubspace
+theorem commutant_dim_eq_stationary_dim (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    Module.finrank ℂ (commutantSubmodule L) = Module.finrank ℂ L.stationarySubspace := by
+  classical
+  -- By commutant_eq_dualKer: commutant = ker(L*)
+  -- By ker_dim_eq_dual_ker_dim: dim(ker L) = dim(ker L*)
+  -- Therefore: dim(commutant) = dim(ker L*) = dim(ker L) = dim(stationary)
+  rw [commutant_eq_dualKer L hFaith]
+  exact (ker_dim_eq_dual_ker_dim L).symm
 
 end DefectCRN.Quantum
