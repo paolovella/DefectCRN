@@ -172,9 +172,24 @@ theorem interactionCommutant_is_subalgebra (L : Lindbladian n) :
     _ = X * 0 + 0 * Y := by rw [hY A hA, hX A hA]
     _ = 0 := by simp [mul_zero, zero_mul]
 
+/-- The interaction commutant contains the GKSL commutant.
+    If X commutes with all of A_int, it commutes with the generators. -/
+theorem interactionCommutant_subset_commutantSubmodule (L : Lindbladian n) :
+    interactionCommutant L ⊆ (commutantSubmodule L : Set (Matrix (Fin n) (Fin n) ℂ)) := by
+  intro X hX
+  simp only [interactionCommutant, Set.mem_setOf_eq] at hX
+  simp only [SetLike.mem_coe, commutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq, IsInCommutant]
+  constructor
+  · exact hX L.hamiltonian (hamiltonian_mem_interactionAlgebra L)
+  constructor
+  · intro Lk hLk
+    exact hX Lk (jumpOp_mem_interactionAlgebra L Lk hLk)
+  · intro Lk hLk
+    exact hX Lk† (jumpOp_dag_mem_interactionAlgebra L Lk hLk)
+
 /-- The commutantSubmodule equals the interaction commutant on generators.
     This connects the new basis-invariant definition to the existing one. -/
-theorem commutantSubmodule_eq_interactionCommutant (L : Lindbladian n) :
+theorem commutantSubmodule_subset_interactionCommutant (L : Lindbladian n) :
     (commutantSubmodule L : Set (Matrix (Fin n) (Fin n) ℂ)) ⊆ interactionCommutant L := by
   intro X hX
   simp only [commutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq,
@@ -213,6 +228,14 @@ theorem commutantSubmodule_eq_interactionCommutant (L : Lindbladian n) :
     calc ⟦X, A₁ * A₂⟧ = A₁ * ⟦X, A₂⟧ := commutator_mul_left X A₁ A₂ hA₁
       _ = A₁ * 0 := by rw [hA₂]
       _ = 0 := mul_zero A₁
+
+/-- The GKSL commutant equals the algebraic commutant of A_int.
+    This is fundamental: the generator-based definition equals the algebraic one. -/
+theorem commutantSubmodule_eq_interactionCommutant (L : Lindbladian n) :
+    (commutantSubmodule L : Set (Matrix (Fin n) (Fin n) ℂ)) = interactionCommutant L :=
+  Set.eq_of_subset_of_subset
+    (commutantSubmodule_subset_interactionCommutant L)
+    (interactionCommutant_subset_commutantSubmodule L)
 
 /-! ## The Center of the Interaction Algebra -/
 
@@ -459,25 +482,17 @@ theorem centralDeficiency_gauge_invariant (L L' : Lindbladian n)
 
 /-! ## Wedderburn Type Signature (Step 2 preview) -/
 
-/-- The Wedderburn type of A_int.
+/-- The Wedderburn type of a *-algebra.
 
     For a finite-dimensional *-algebra over ℂ, the Wedderburn decomposition gives:
-    A_int ≅ ⊕_α M_{d_α}(ℂ) ⊗ I_{m_α}
+    A ≅ ⊕_α M_{d_α}(ℂ) ⊗ I_{m_α}
 
-    The type signature is the multiset {(d_α, m_α)}_α.
+    The type signature is the list {(d_α, m_α)}_α.
 
     This is a complete finite-dimensional algebraic invariant. -/
 structure WedderburnType where
   blocks : List (ℕ × ℕ)  -- List of (d_α, m_α) pairs
   deriving DecidableEq
-
-/-- Compute the Wedderburn type of a *-subalgebra.
-
-    This requires computing:
-    1. Minimal central idempotents of A_int
-    2. For each block, the matrix dimension d_α and multiplicity m_α -/
-noncomputable def wedderburnType (L : Lindbladian n) : WedderburnType :=
-  sorry -- Requires Wedderburn decomposition algorithm
 
 /-- The total commutant dimension from Wedderburn type: Σ_α m_α² -/
 def commutantDimFromType (w : WedderburnType) : ℕ :=
@@ -487,16 +502,110 @@ def commutantDimFromType (w : WedderburnType) : ℕ :=
 def centerDimFromType (w : WedderburnType) : ℕ :=
   w.blocks.length
 
-/-- Wedderburn type determines commutant dimension -/
-theorem commutant_dim_eq_wedderburn (L : Lindbladian n)
-    (hFaith : HasFaithfulStationaryState L) :
-    Module.finrank ℂ (commutantSubmodule L) =
-    commutantDimFromType (wedderburnType L) := by
-  sorry -- Follows from Wedderburn structure theorem
+/-- **Wedderburn Structure Theorem** for finite-dimensional *-subalgebras of M_n(ℂ).
+
+    Every such algebra has a unique (up to ordering) Wedderburn decomposition
+    A ≅ ⊕_α (M_{d_α}(ℂ) ⊗ I_{m_α})
+
+    satisfying:
+    - dim Z(A) = number of blocks (central idempotents)
+    - dim A' = Σ_α m_α² (commutant dimension when A acts on ℂⁿ)
+    - Σ_α d_α · m_α = n (the blocks partition the representation space)
+
+    This is a classical result in finite-dimensional algebra theory.
+    Reference: Wedderburn, "On hypercomplex numbers" (1908) -/
+structure WedderburnDecomposition (A : Subalgebra ℂ (Matrix (Fin n) (Fin n) ℂ)) where
+  /-- The Wedderburn type signature -/
+  wtype : WedderburnType
+  /-- Center dimension equals number of blocks -/
+  center_dim : ∀ (centerSub : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ)),
+    (∀ X, X ∈ centerSub ↔ X ∈ A ∧ ∀ Y ∈ A, ⟦X, Y⟧ = 0) →
+    Module.finrank ℂ centerSub = wtype.blocks.length
+  /-- Commutant dimension equals Σ m_α² -/
+  commutant_dim : ∀ (commSub : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ)),
+    (∀ X, X ∈ commSub ↔ ∀ Y ∈ A, ⟦X, Y⟧ = 0) →
+    Module.finrank ℂ commSub = wtype.blocks.foldl (fun acc ⟨_, m⟩ => acc + m * m) 0
+  /-- Blocks partition the space: Σ d_α · m_α = n -/
+  partition : wtype.blocks.foldl (fun acc ⟨d, m⟩ => acc + d * m) 0 = n
+
+/-- **Existence of Wedderburn decomposition** for interaction algebras.
+
+    This is the existence part of the Wedderburn structure theorem applied
+    to the interaction algebra. The proof requires:
+    1. The interaction algebra is a finite-dimensional *-subalgebra
+    2. Apply Wedderburn-Artin theory for semisimple algebras
+    3. Use the fact that *-algebras over ℂ are semisimple
+
+    We axiomatize this as it requires substantial algebra infrastructure. -/
+axiom wedderburn_decomposition_exists (L : Lindbladian n) :
+    WedderburnDecomposition (interactionAlgebra L)
+
+/-- The Wedderburn type of the interaction algebra -/
+noncomputable def wedderburnType (L : Lindbladian n) : WedderburnType :=
+  (wedderburn_decomposition_exists L).wtype
 
 /-- Wedderburn type determines center dimension -/
 theorem center_dim_eq_wedderburn (L : Lindbladian n) :
     centerDimension L = centerDimFromType (wedderburnType L) := by
-  sorry -- Follows from Wedderburn structure theorem
+  unfold centerDimension wedderburnType centerDimFromType
+  have h := (wedderburn_decomposition_exists L).center_dim (interactionCenterSubmodule L)
+  apply h
+  intro X
+  simp only [interactionCenterSubmodule, Submodule.mem_mk, Set.mem_setOf_eq, interactionCenter]
+  rfl
+
+/-- The interaction commutant as a submodule -/
+noncomputable def interactionCommutantSubmodule (L : Lindbladian n) :
+    Submodule ℂ (Matrix (Fin n) (Fin n) ℂ) where
+  carrier := interactionCommutant L
+  zero_mem' := by
+    simp only [interactionCommutant, Set.mem_setOf_eq]
+    intro A _; simp [commutator]
+  add_mem' := by
+    intro X Y hX hY
+    simp only [interactionCommutant, Set.mem_setOf_eq] at *
+    intro A hA
+    rw [commutator_add_left, hX A hA, hY A hA, add_zero]
+  smul_mem' := by
+    intro c X hX
+    simp only [interactionCommutant, Set.mem_setOf_eq] at *
+    intro A hA
+    rw [commutator_smul_left, hX A hA, smul_zero]
+
+/-- The GKSL commutant submodule equals the interaction commutant submodule -/
+theorem commutantSubmodule_eq_interactionCommutantSubmodule (L : Lindbladian n) :
+    commutantSubmodule L = interactionCommutantSubmodule L := by
+  ext X
+  have h := commutantSubmodule_eq_interactionCommutant L
+  simp only [interactionCommutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq,
+    interactionCommutant]
+  constructor
+  · intro hX
+    have hX' : X ∈ (commutantSubmodule L : Set _) := hX
+    rw [h] at hX'
+    exact hX'
+  · intro hX
+    have hX' : X ∈ interactionCommutant L := hX
+    rw [← h] at hX'
+    exact hX'
+
+/-- Wedderburn type determines commutant dimension.
+
+    The commutant dimension is Σ_α m_α² from the Wedderburn decomposition.
+    This follows from the Wedderburn structure theorem. -/
+theorem commutant_dim_eq_wedderburn (L : Lindbladian n)
+    (_hFaith : HasFaithfulStationaryState L) :
+    Module.finrank ℂ (commutantSubmodule L) =
+    commutantDimFromType (wedderburnType L) := by
+  -- Use the equality of commutant submodules
+  rw [commutantSubmodule_eq_interactionCommutantSubmodule]
+  -- Apply the Wedderburn decomposition
+  unfold wedderburnType commutantDimFromType
+  have h := (wedderburn_decomposition_exists L).commutant_dim (interactionCommutantSubmodule L)
+  apply h
+  intro X
+  simp only [interactionCommutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq,
+    interactionCommutant]
+  rfl
 
 end DefectCRN.Quantum
