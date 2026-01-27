@@ -96,6 +96,12 @@ theorem jacobi_identity (A B C : Matrix (Fin n) (Fin n) ℂ) :
   -- After expansion, all 12 terms cancel pairwise
   noncomm_ring
 
+/-- General product rule: [A * B, C] = A * [B, C] + [A, C] * B -/
+theorem commutator_mul_general (A B C : Matrix (Fin n) (Fin n) ℂ) :
+    ⟦A * B, C⟧ = A * ⟦B, C⟧ + ⟦A, C⟧ * B := by
+  simp only [commutator]
+  noncomm_ring
+
 /-- [X, A] = 0 implies [X, A * B] = A * [X, B] -/
 theorem commutator_mul_left (X A B : Matrix (Fin n) (Fin n) ℂ)
     (hXA : ⟦X, A⟧ = 0) : ⟦X, A * B⟧ = A * ⟦X, B⟧ := by
