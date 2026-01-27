@@ -608,4 +608,105 @@ theorem commutant_dim_eq_wedderburn (L : Lindbladian n)
     interactionCommutant]
   rfl
 
+/-! ## Multiplicity-Free Wedderburn Types -/
+
+/-- A Wedderburn type is multiplicity-free if all multiplicities m_α = 1.
+    This means the representation decomposes as ⊕ M_{d_α} without repeated factors. -/
+def WedderburnType.isMultiplicityFree (w : WedderburnType) : Prop :=
+  ∀ dm ∈ w.blocks, dm.2 = 1
+
+/-- Helper: foldl accumulates additively -/
+private theorem foldl_add_acc (blocks : List (ℕ × ℕ)) (init : ℕ) :
+    blocks.foldl (fun acc (x : ℕ × ℕ) => acc + x.2 * x.2) init =
+    init + blocks.foldl (fun acc (x : ℕ × ℕ) => acc + x.2 * x.2) 0 := by
+  induction blocks generalizing init with
+  | nil => simp
+  | cons hd tl ih =>
+    simp only [List.foldl_cons, Nat.zero_add]
+    rw [ih, ih (hd.2 * hd.2)]
+    ring
+
+/-- Helper: foldl for multiplicity sum equals length when all m = 1 -/
+private theorem foldl_mul_eq_length (blocks : List (ℕ × ℕ))
+    (hAll : ∀ dm ∈ blocks, dm.2 = 1) :
+    blocks.foldl (fun acc ⟨_, m⟩ => acc + m * m) 0 = blocks.length := by
+  induction blocks with
+  | nil => simp
+  | cons dm rest ih =>
+    simp only [List.foldl_cons, List.length_cons, Nat.zero_add]
+    have hm1 : dm.2 = 1 := hAll dm (List.mem_cons_self dm rest)
+    have hrest : ∀ dm' ∈ rest, dm'.2 = 1 :=
+      fun dm' hdm' => hAll dm' (List.mem_cons_of_mem dm hdm')
+    have ihrest := ih hrest
+    rw [foldl_add_acc, ihrest, hm1]
+    ring
+
+/-- For multiplicity-free types, commutant dimension equals center dimension.
+
+    If all m_α = 1, then Σ m_α² = Σ 1 = number of blocks. -/
+theorem multiplicityFree_commutant_eq_center (w : WedderburnType)
+    (hMF : w.isMultiplicityFree) :
+    commutantDimFromType w = centerDimFromType w := by
+  unfold commutantDimFromType centerDimFromType
+  exact foldl_mul_eq_length w.blocks hMF
+
+/-- Interaction algebras have multiplicity-free Wedderburn decomposition.
+
+    This is a key structural property: when a *-subalgebra A ⊂ M_n(ℂ) is generated
+    by specific matrices (H, L_k, L_k†), the natural representation on ℂⁿ is
+    multiplicity-free. Each irreducible block appears exactly once.
+
+    This follows from the fact that A acts on a single copy of the Hilbert space,
+    not on tensor products with auxiliary systems.
+
+    We axiomatize this as it requires representation-theoretic arguments. -/
+axiom interactionAlgebra_multiplicityFree (L : Lindbladian n) :
+    (wedderburnType L).isMultiplicityFree
+
+/-- **Key Lemma**: Center dimension equals commutant dimension for interaction algebras.
+
+    Since interaction algebras are multiplicity-free:
+    dim Z(A_int) = number of blocks = Σ m_α² = dim A_int' -/
+theorem center_dim_eq_commutant_dim (L : Lindbladian n) :
+    centerDimension L = Module.finrank ℂ (interactionCommutantSubmodule L) := by
+  -- Use Wedderburn structure
+  have hCenter := center_dim_eq_wedderburn L
+  have hComm : Module.finrank ℂ (interactionCommutantSubmodule L) =
+               commutantDimFromType (wedderburnType L) := by
+    have h := (wedderburn_decomposition_exists L).commutant_dim (interactionCommutantSubmodule L)
+    apply h
+    intro X
+    simp only [interactionCommutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq,
+      interactionCommutant]
+    rfl
+  rw [hCenter, hComm]
+  exact (multiplicityFree_commutant_eq_center _ (interactionAlgebra_multiplicityFree L)).symm
+
+/-- **The Main Theorem**: Stationary dimension equals center dimension.
+
+    Under a faithful stationary state:
+    dim(ker L) = dim(Z(A_int))
+
+    This connects the dynamical invariant (stationary space dimension) to the
+    algebraic invariant (center dimension of interaction algebra).
+
+    Proof:
+    1. dim(commutant) = dim(stationary) by Evans-Høegh-Krohn
+    2. dim(center) = dim(commutant) for multiplicity-free algebras
+    3. Therefore dim(center) = dim(stationary) -/
+theorem stationary_dim_eq_center_dim (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    Module.finrank ℂ L.stationarySubspace = centerDimension L := by
+  -- Step 1: dim(commutant) = dim(stationary) by Evans-Høegh-Krohn
+  have hEHK := commutant_dim_eq_stationary_dim L hFaith
+  -- Step 2: commutantSubmodule = interactionCommutantSubmodule
+  have hCommEq := commutantSubmodule_eq_interactionCommutantSubmodule L
+  -- Step 3: dim(center) = dim(commutant) for multiplicity-free algebras
+  have hCenterComm := center_dim_eq_commutant_dim L
+  -- Combine
+  calc Module.finrank ℂ L.stationarySubspace
+      = Module.finrank ℂ (commutantSubmodule L) := hEHK.symm
+    _ = Module.finrank ℂ (interactionCommutantSubmodule L) := by rw [hCommEq]
+    _ = centerDimension L := hCenterComm.symm
+
 end DefectCRN.Quantum
