@@ -69,3 +69,9 @@ from .invariants import (
     compute_all_invariants,
     CompleteInvariants,
 )
+
+from .classical import (
+    embed_markov_chain,
+    analyze_classical_chain,
+    verify_classical_reduction,
+)
