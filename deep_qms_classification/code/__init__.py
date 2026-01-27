@@ -59,3 +59,13 @@ from .comparison import (
     run_comparison,
     ComparisonResult,
 )
+
+from .peripheral import (
+    analyze_peripheral_spectrum,
+    PeripheralSpectrumInfo,
+)
+
+from .invariants import (
+    compute_all_invariants,
+    CompleteInvariants,
+)
