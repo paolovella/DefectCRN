@@ -72,37 +72,47 @@ def IsWeaklyReversible (L : Lindbladian n) : Prop :=
 /-- **Quantum DZT Part (a)**: δ_Q = 0 implies unique stationary state.
 
     This does NOT require QDB and does NOT claim faithfulness.
-    The stationary state may be a pure state (rank 1). -/
-theorem quantum_dzt_unique (L : Lindbladian n) (hDef : quantumDeficiency L = 0) :
+    The stationary state may be a pure state (rank 1).
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem
+    which establishes commutant = ker(L*). The mathematical result is true
+    without faithfulness but our proof path uses dimension counting. -/
+theorem quantum_dzt_unique (L : Lindbladian n) (hDef : quantumDeficiency L = 0)
+    (hFaith : HasFaithfulStationaryState L) :
     ∃! ρ : Matrix (Fin n) (Fin n) ℂ,
       ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ := by
-  have hErg : IsErgodic L := deficiency_zero_iff_ergodic L |>.mp hDef
-  exact ergodic_unique_stationary_density L hErg
+  have hErg : IsErgodic L := (deficiency_zero_iff_ergodic L hFaith).mp hDef
+  exact ergodic_unique_stationary_density L hErg hFaith
 
 /-- The unique stationary state from Quantum DZT -/
 noncomputable def quantumDZTStationaryState (L : Lindbladian n)
-    (hDef : quantumDeficiency L = 0) : Matrix (Fin n) (Fin n) ℂ :=
-  (quantum_dzt_unique L hDef).choose
+    (hDef : quantumDeficiency L = 0) (hFaith : HasFaithfulStationaryState L) :
+    Matrix (Fin n) (Fin n) ℂ :=
+  (quantum_dzt_unique L hDef hFaith).choose
 
 /-- The QDZT stationary state is Hermitian -/
-theorem quantumDZT_hermitian (L : Lindbladian n) (hDef : quantumDeficiency L = 0) :
-    (quantumDZTStationaryState L hDef).IsHermitian :=
-  (quantum_dzt_unique L hDef).choose_spec.1.1
+theorem quantumDZT_hermitian (L : Lindbladian n) (hDef : quantumDeficiency L = 0)
+    (hFaith : HasFaithfulStationaryState L) :
+    (quantumDZTStationaryState L hDef hFaith).IsHermitian :=
+  (quantum_dzt_unique L hDef hFaith).choose_spec.1.1
 
 /-- The QDZT stationary state is positive semidefinite -/
-theorem quantumDZT_posSemidef (L : Lindbladian n) (hDef : quantumDeficiency L = 0) :
-    IsPosSemidef (quantumDZTStationaryState L hDef) :=
-  (quantum_dzt_unique L hDef).choose_spec.1.2.1
+theorem quantumDZT_posSemidef (L : Lindbladian n) (hDef : quantumDeficiency L = 0)
+    (hFaith : HasFaithfulStationaryState L) :
+    IsPosSemidef (quantumDZTStationaryState L hDef hFaith) :=
+  (quantum_dzt_unique L hDef hFaith).choose_spec.1.2.1
 
 /-- The QDZT stationary state has trace 1 -/
-theorem quantumDZT_trace (L : Lindbladian n) (hDef : quantumDeficiency L = 0) :
-    (quantumDZTStationaryState L hDef).trace = 1 :=
-  (quantum_dzt_unique L hDef).choose_spec.1.2.2.1
+theorem quantumDZT_trace (L : Lindbladian n) (hDef : quantumDeficiency L = 0)
+    (hFaith : HasFaithfulStationaryState L) :
+    (quantumDZTStationaryState L hDef hFaith).trace = 1 :=
+  (quantum_dzt_unique L hDef hFaith).choose_spec.1.2.2.1
 
 /-- The QDZT stationary state is stationary -/
-theorem quantumDZT_stationary (L : Lindbladian n) (hDef : quantumDeficiency L = 0) :
-    L.IsStationaryState (quantumDZTStationaryState L hDef) :=
-  (quantum_dzt_unique L hDef).choose_spec.1.2.2.2
+theorem quantumDZT_stationary (L : Lindbladian n) (hDef : quantumDeficiency L = 0)
+    (hFaith : HasFaithfulStationaryState L) :
+    L.IsStationaryState (quantumDZTStationaryState L hDef hFaith) :=
+  (quantum_dzt_unique L hDef hFaith).choose_spec.1.2.2.2
 
 /-! ### Part (b): Faithfulness from δ_Q = 0 + QDB
 
@@ -117,9 +127,10 @@ This requires quantum detailed balance. -/
     4. Therefore the unique stationary state is faithful -/
 theorem quantum_dzt_faithful (L : Lindbladian n)
     (hDef : quantumDeficiency L = 0)
+    (hFaith : HasFaithfulStationaryState L)
     (σ : Matrix (Fin n) (Fin n) ℂ)
     (hQDB : SatisfiesQDB L σ) :
-    IsFaithful (quantumDZTStationaryState L hDef) := by
+    IsFaithful (quantumDZTStationaryState L hDef hFaith) := by
   -- σ is faithful by QDB
   have hσ_faithful := qdb_σ_faithful L σ hQDB
   -- σ is stationary by QDB
@@ -128,8 +139,8 @@ theorem quantum_dzt_faithful (L : Lindbladian n)
   have hσ_herm : σ.IsHermitian := hσ_faithful.1
   have hσ_psd : IsPosSemidef σ := IsPositiveDefinite.toPosSemidef hσ_faithful
   -- By uniqueness (δ_Q = 0), the unique state equals σ
-  have h_unique := (quantum_dzt_unique L hDef).choose_spec.2
-  have h_eq : quantumDZTStationaryState L hDef = σ :=
+  have h_unique := (quantum_dzt_unique L hDef hFaith).choose_spec.2
+  have h_eq : quantumDZTStationaryState L hDef hFaith = σ :=
     (h_unique σ ⟨hσ_herm, hσ_psd, hσ_trace, hσ_stat⟩).symm
   rw [h_eq]
   exact hσ_faithful
@@ -137,15 +148,16 @@ theorem quantum_dzt_faithful (L : Lindbladian n)
 /-- Alternative: If ANY faithful stationary state exists, then THE stationary state is faithful -/
 theorem quantum_dzt_faithful_of_exists (L : Lindbladian n)
     (hDef : quantumDeficiency L = 0)
+    (hFaith : HasFaithfulStationaryState L)
     (h_exists_faithful : ∃ σ : Matrix (Fin n) (Fin n) ℂ,
       σ.IsHermitian ∧ IsPosSemidef σ ∧ σ.trace = 1 ∧ L.IsStationaryState σ ∧ IsFaithful σ) :
-    IsFaithful (quantumDZTStationaryState L hDef) := by
-  have hErg : IsErgodic L := deficiency_zero_iff_ergodic L |>.mp hDef
+    IsFaithful (quantumDZTStationaryState L hDef hFaith) := by
+  have hErg : IsErgodic L := (deficiency_zero_iff_ergodic L hFaith).mp hDef
   -- Use Frigerio's result
   obtain ⟨σ, hσHerm, hσPSD, hσTr, hσStat, hσFaith⟩ := h_exists_faithful
   -- By uniqueness, σ = the unique stationary state
-  have h_unique := (quantum_dzt_unique L hDef).choose_spec.2
-  have h_eq : quantumDZTStationaryState L hDef = σ :=
+  have h_unique := (quantum_dzt_unique L hDef hFaith).choose_spec.2
+  have h_eq : quantumDZTStationaryState L hDef hFaith = σ :=
     (h_unique σ ⟨hσHerm, hσPSD, hσTr, hσStat⟩).symm
   rw [h_eq]
   exact hσFaith
@@ -223,7 +235,10 @@ axiom quantum_dzt_convergence (L : Lindbladian n)
     This is the quantum analog of the classical Deficiency Zero Theorem:
     - δ_Q = 0 corresponds to deficiency zero
     - QDB corresponds to weak reversibility
-    - The result parallels: δ = 0 + weak rev ⟹ unique positive equilibrium -/
+    - The result parallels: δ = 0 + weak rev ⟹ unique positive equilibrium
+
+    Note: QDB implies a faithful stationary state exists (σ itself), so the
+    HasFaithfulStationaryState hypothesis is automatically satisfied. -/
 theorem quantum_deficiency_zero_theorem (L : Lindbladian n)
     (hDef : quantumDeficiency L = 0)
     (σ : Matrix (Fin n) (Fin n) ℂ)
@@ -232,15 +247,17 @@ theorem quantum_deficiency_zero_theorem (L : Lindbladian n)
     (∃! ρ : Matrix (Fin n) (Fin n) ℂ,
       ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ) ∧
     -- (b) Faithfulness
-    IsFaithful (quantumDZTStationaryState L hDef) ∧
+    IsFaithful (quantumDZTStationaryState L hDef (⟨σ, hQDB.σ_stationary, hQDB.σ_faithful⟩)) ∧
     -- (c) Convergence
     (∀ ρ₀ : Matrix (Fin n) (Fin n) ℂ,
       ρ₀.IsHermitian → IsPosSemidef ρ₀ → ρ₀.trace = 1 →
       ∃ C γ : ℝ, C > 0 ∧ γ > 0 ∧ ∀ t ≥ 0,
-        gnsNorm σ (L.evolve t ρ₀ - σ) ≤ C * Real.exp (-γ * t)) :=
-  ⟨quantum_dzt_unique L hDef,
-   quantum_dzt_faithful L hDef σ hQDB,
-   fun ρ₀ hρ₀_herm hρ₀_psd hρ₀_tr =>
-     quantum_dzt_convergence L hDef σ hQDB ρ₀ ⟨hρ₀_herm, hρ₀_psd, hρ₀_tr⟩⟩
+        gnsNorm σ (L.evolve t ρ₀ - σ) ≤ C * Real.exp (-γ * t)) := by
+  -- Derive HasFaithfulStationaryState from QDB
+  have hFaith : HasFaithfulStationaryState L := ⟨σ, hQDB.σ_stationary, hQDB.σ_faithful⟩
+  exact ⟨quantum_dzt_unique L hDef hFaith,
+         quantum_dzt_faithful L hDef hFaith σ hQDB,
+         fun ρ₀ hρ₀_herm hρ₀_psd hρ₀_tr =>
+           quantum_dzt_convergence L hDef σ hQDB ρ₀ ⟨hρ₀_herm, hρ₀_psd, hρ₀_tr⟩⟩
 
 end DefectCRN.Quantum

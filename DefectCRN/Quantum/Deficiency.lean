@@ -41,11 +41,14 @@ theorem deficiency_zero_iff_stationary_dim_one (L : Lindbladian n)
   · intro h
     simp only [h, Nat.sub_self]
 
-/-- δ_Q = 0 implies ergodic.
+/-- δ_Q = 0 implies ergodic, assuming a faithful stationary state.
+
     The proof uses the fundamental result that dim(commutant) = dim(stationary subspace).
-    If stationary subspace is 1-dimensional, commutant is 1-dimensional, hence trivial. -/
+    If stationary subspace is 1-dimensional, commutant is 1-dimensional, hence trivial.
+
+    The faithfulness hypothesis is needed for the Evans-Høegh-Krohn theorem. -/
 theorem deficiency_zero_implies_ergodic (L : Lindbladian n)
-    (h : quantumDeficiency L = 0) : IsErgodic L := by
+    (h : quantumDeficiency L = 0) (hFaith : HasFaithfulStationaryState L) : IsErgodic L := by
   -- δ_Q = 0 means dim(stationary) = 1
   have hPos := stationary_subspace_nontrivial L
   have hDim : Module.finrank ℂ L.stationarySubspace = 1 := by
@@ -53,21 +56,23 @@ theorem deficiency_zero_implies_ergodic (L : Lindbladian n)
     omega
   -- By the commutant-stationary dimension theorem, dim(commutant) = 1
   have hCommDim : Module.finrank ℂ (commutantSubmodule L) = 1 := by
-    rw [commutant_dim_eq_stationary_dim L]
+    rw [commutant_dim_eq_stationary_dim L hFaith]
     exact hDim
   -- 1-dimensional commutant = trivial commutant (only scalars)
   exact commutant_dim_one_implies_trivial L hCommDim
 
-/-- Ergodic implies δ_Q = 0 -/
+/-- Ergodic implies δ_Q = 0, assuming a faithful stationary state. -/
 theorem ergodic_implies_deficiency_zero (L : Lindbladian n)
-    (h : IsErgodic L) : quantumDeficiency L = 0 := by
-  have hDim := ergodic_stationary_dim_one L h
+    (h : IsErgodic L) (hFaith : HasFaithfulStationaryState L) : quantumDeficiency L = 0 := by
+  have hDim := ergodic_stationary_dim_one L h hFaith
   unfold quantumDeficiency
-  simp only [hDim, Nat.sub_self]
+  omega
 
-/-- δ_Q = 0 ⟺ ergodic -/
-theorem deficiency_zero_iff_ergodic (L : Lindbladian n) :
+/-- δ_Q = 0 ⟺ ergodic (assuming a faithful stationary state). -/
+theorem deficiency_zero_iff_ergodic (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
     quantumDeficiency L = 0 ↔ IsErgodic L :=
-  ⟨deficiency_zero_implies_ergodic L, ergodic_implies_deficiency_zero L⟩
+  ⟨fun h => deficiency_zero_implies_ergodic L h hFaith,
+   fun h => ergodic_implies_deficiency_zero L h hFaith⟩
 
 end DefectCRN.Quantum

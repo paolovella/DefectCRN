@@ -54,39 +54,51 @@ variable {n : ℕ} [NeZero n]
 
 /-- Frigerio's Uniqueness Theorem (1978) - CORRECTED VERSION
 
-    For an ergodic Lindbladian, there exists a unique stationary density matrix.
+    For an ergodic Lindbladian with a faithful stationary state, there exists a
+    unique stationary density matrix.
 
     NOTE: We do NOT claim the stationary state is faithful. It may be a pure state
-    (rank 1) as in the amplitude damping example. -/
-theorem frigerio_uniqueness (L : Lindbladian n) (hErg : IsErgodic L) :
+    (rank 1) as in the amplitude damping example. The faithfulness hypothesis is
+    used for the Evans-Høegh-Krohn theorem (commutant = ker(L*)).
+
+    The mathematical result "ergodic implies unique stationary state" is true
+    without faithfulness, but our proof path uses dimension counting which
+    requires the Evans-Høegh-Krohn theorem. -/
+theorem frigerio_uniqueness (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
     ∃! ρ : Matrix (Fin n) (Fin n) ℂ,
       ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ :=
-  ergodic_unique_stationary_density L hErg
+  ergodic_unique_stationary_density L hErg hFaith
 
 /-- The unique stationary state of an ergodic Lindbladian -/
-noncomputable def uniqueStationaryState (L : Lindbladian n) (hErg : IsErgodic L) :
+noncomputable def uniqueStationaryState (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
     Matrix (Fin n) (Fin n) ℂ :=
-  (frigerio_uniqueness L hErg).choose
+  (frigerio_uniqueness L hErg hFaith).choose
 
 /-- The unique stationary state is Hermitian -/
-theorem uniqueStationaryState_hermitian (L : Lindbladian n) (hErg : IsErgodic L) :
-    (uniqueStationaryState L hErg).IsHermitian :=
-  (frigerio_uniqueness L hErg).choose_spec.1.1
+theorem uniqueStationaryState_hermitian (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
+    (uniqueStationaryState L hErg hFaith).IsHermitian :=
+  (frigerio_uniqueness L hErg hFaith).choose_spec.1.1
 
 /-- The unique stationary state is positive semidefinite -/
-theorem uniqueStationaryState_posSemidef (L : Lindbladian n) (hErg : IsErgodic L) :
-    IsPosSemidef (uniqueStationaryState L hErg) :=
-  (frigerio_uniqueness L hErg).choose_spec.1.2.1
+theorem uniqueStationaryState_posSemidef (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
+    IsPosSemidef (uniqueStationaryState L hErg hFaith) :=
+  (frigerio_uniqueness L hErg hFaith).choose_spec.1.2.1
 
 /-- The unique stationary state has trace 1 -/
-theorem uniqueStationaryState_trace (L : Lindbladian n) (hErg : IsErgodic L) :
-    (uniqueStationaryState L hErg).trace = 1 :=
-  (frigerio_uniqueness L hErg).choose_spec.1.2.2.1
+theorem uniqueStationaryState_trace (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
+    (uniqueStationaryState L hErg hFaith).trace = 1 :=
+  (frigerio_uniqueness L hErg hFaith).choose_spec.1.2.2.1
 
 /-- The unique stationary state is stationary -/
-theorem uniqueStationaryState_stationary (L : Lindbladian n) (hErg : IsErgodic L) :
-    L.IsStationaryState (uniqueStationaryState L hErg) :=
-  (frigerio_uniqueness L hErg).choose_spec.1.2.2.2
+theorem uniqueStationaryState_stationary (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
+    L.IsStationaryState (uniqueStationaryState L hErg hFaith) :=
+  (frigerio_uniqueness L hErg hFaith).choose_spec.1.2.2.2
 
 /-- If a faithful stationary state exists for an ergodic Lindbladian,
     then THE unique stationary state is that faithful state.
@@ -94,13 +106,14 @@ theorem uniqueStationaryState_stationary (L : Lindbladian n) (hErg : IsErgodic L
     This is the correct version of the "ergodic implies faithful" claim:
     it requires the ADDITIONAL hypothesis that a faithful state exists. -/
 theorem ergodic_faithful_of_exists_faithful (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L)
     (h_exists : ∃ σ : Matrix (Fin n) (Fin n) ℂ,
       σ.IsHermitian ∧ IsPosSemidef σ ∧ σ.trace = 1 ∧ L.IsStationaryState σ ∧ IsFaithful σ) :
-    IsFaithful (uniqueStationaryState L hErg) := by
+    IsFaithful (uniqueStationaryState L hErg hFaith) := by
   obtain ⟨σ, hσHerm, hσPSD, hσTr, hσStat, hσFaith⟩ := h_exists
-  -- By uniqueness, σ = uniqueStationaryState L hErg
-  have hUniq := (frigerio_uniqueness L hErg).choose_spec.2
-  have hEq : σ = uniqueStationaryState L hErg :=
+  -- By uniqueness, σ = uniqueStationaryState L hErg hFaith
+  have hUniq := (frigerio_uniqueness L hErg hFaith).choose_spec.2
+  have hEq : σ = uniqueStationaryState L hErg hFaith :=
     hUniq σ ⟨hσHerm, hσPSD, hσTr, hσStat⟩
   rw [← hEq]
   exact hσFaith
@@ -133,11 +146,12 @@ axiom quantumSemigroup (L : Lindbladian n) (t : ℝ) (ρ : Matrix (Fin n) (Fin n
     - Frigerio, A. "Stationary states of quantum dynamical semigroups" (1978)
     - Spohn, H. "An algebraic condition for the approach to equilibrium" (1977) -/
 axiom convergence_to_stationary (L : Lindbladian n) (hErg : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L)
     (ρ₀ : Matrix (Fin n) (Fin n) ℂ)
     (hρ₀ : ρ₀.IsHermitian ∧ IsPosSemidef ρ₀ ∧ ρ₀.trace = 1) :
     Filter.Tendsto
       (fun t : ℝ => quantumSemigroup L t ρ₀)
       Filter.atTop
-      (nhds (uniqueStationaryState L hErg))
+      (nhds (uniqueStationaryState L hErg hFaith))
 
 end DefectCRN.Quantum

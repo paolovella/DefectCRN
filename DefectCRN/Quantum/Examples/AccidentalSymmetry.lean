@@ -455,8 +455,12 @@ theorem finrank_σxCommutant : Module.finrank ℂ σxCommutantSubmodule = 2 := b
     but the specific parameter choice H = ωσ_x, L = √γσ_x creates an "accidental
     symmetry" that enlarges the commutant from ℂI to span{I, σ_x}.
 
-    This is the core demonstration of non-genericity in quantum deficiency. -/
-theorem alignedL_deficiency_one (ω γ : ℝ) (hω : ω ≠ 0) (hγ : γ > 0) :
+    This is the core demonstration of non-genericity in quantum deficiency.
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem
+    which establishes dim(commutant) = dim(stationary). -/
+theorem alignedL_deficiency_one (ω γ : ℝ) (hω : ω ≠ 0) (hγ : γ > 0)
+    (hFaith : HasFaithfulStationaryState (alignedL ω γ)) :
     quantumDeficiency (alignedL ω γ) = 1 := by
   -- Step 1: Show commutant(alignedL) has dimension 2
   -- The commutant equals the σ_x-commutant which has dimension 2
@@ -488,6 +492,6 @@ theorem alignedL_deficiency_one (ω γ : ℝ) (hω : ω ≠ 0) (hγ : γ > 0) :
 
   -- Step 2: Compute the deficiency
   unfold quantumDeficiency
-  rw [← commutant_dim_eq_stationary_dim, hCommEq, finrank_σxCommutant]
+  rw [← commutant_dim_eq_stationary_dim _ hFaith, hCommEq, finrank_σxCommutant]
 
 end DefectCRN.Quantum.Examples.AccidentalSymmetry

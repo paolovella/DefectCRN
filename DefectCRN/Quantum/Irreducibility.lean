@@ -642,21 +642,33 @@ theorem eq_of_mem_finrank_one_trace_eq {S : Submodule ℂ (Matrix (Fin n) (Fin n
   -- Therefore x = y
   rw [← hcx', ← hcy', hcxcy]
 
-/-- Ergodic implies 1-dimensional stationary space -/
-theorem ergodic_stationary_dim_one (L : Lindbladian n) (h : IsErgodic L) :
+/-- Ergodic with faithful stationary state implies 1-dimensional stationary space.
+
+    The faithfulness hypothesis is needed for the Evans-Høegh-Krohn theorem
+    which establishes commutant = ker(L*).
+
+    For ergodic systems without faithful stationary states (e.g., amplitude damping
+    with pure state |0⟩⟨0|), dim(stationary) = 1 still holds but requires
+    a different proof (e.g., using spectral analysis). -/
+theorem ergodic_stationary_dim_one (L : Lindbladian n) (h : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
     Module.finrank ℂ L.stationarySubspace = 1 := by
   -- Ergodic means trivial commutant
   -- By finrank_trivialCommutant, dim(commutant) = 1
   -- By commutant_dim_eq_stationary_dim, dim(stationary) = dim(commutant) = 1
   have hCommDim := finrank_trivialCommutant L h
-  rw [← commutant_dim_eq_stationary_dim L]
+  rw [← commutant_dim_eq_stationary_dim L hFaith]
   exact hCommDim
 
-/-- Ergodic implies unique stationary density matrix.
+/-- Ergodic with faithful stationary state implies unique stationary density matrix.
+
     The full proof uses Frigerio's theorem (see `ergodic_unique_stationary_density'`
     in Frigerio.lean). Here we note that uniqueness also follows from dim = 1
-    once existence is established. -/
-theorem ergodic_unique_stationary_density (L : Lindbladian n) (h : IsErgodic L) :
+    once existence is established.
+
+    The faithfulness hypothesis is needed for the Evans-Høegh-Krohn theorem. -/
+theorem ergodic_unique_stationary_density (L : Lindbladian n) (h : IsErgodic L)
+    (hFaith : HasFaithfulStationaryState L) :
     ∃! ρ : Matrix (Fin n) (Fin n) ℂ,
       ρ.IsHermitian ∧ IsPosSemidef ρ ∧ ρ.trace = 1 ∧ L.IsStationaryState ρ := by
   -- Existence from exists_stationary_state
@@ -669,7 +681,7 @@ theorem ergodic_unique_stationary_density (L : Lindbladian n) (h : IsErgodic L) 
   have hρMem : ρ ∈ L.stationarySubspace := L.mem_stationarySubspace_iff ρ |>.mpr hρStat
   have hρ₀Mem : ρ₀ ∈ L.stationarySubspace := L.mem_stationarySubspace_iff ρ₀ |>.mpr hρ₀Stat
   -- dim(stationarySubspace) = 1
-  have hDim := ergodic_stationary_dim_one L h
+  have hDim := ergodic_stationary_dim_one L h hFaith
   -- Apply the helper lemma
   exact eq_of_mem_finrank_one_trace_eq hDim ρ ρ₀ hρMem hρ₀Mem hρHerm hρ₀Herm hρTr hρ₀Tr
 

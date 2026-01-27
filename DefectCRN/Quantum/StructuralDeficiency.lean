@@ -513,43 +513,105 @@ def Lindbladian.hasSupport (L : Lindbladian n) (G : QuantumNetworkGraph n) : Pro
   -- Jump operator support condition
   (∀ Lk ∈ L.jumpOps, ∀ i j : Fin n, i ≠ j → Lk i j ≠ 0 → (j, i) ∈ G.jumpEdges)
 
+/-- A graph is non-degenerate if every vertex has at least one edge.
+    This ensures every row and column of commutant elements is diagonal. -/
+def IsNonDegenerate (G : QuantumNetworkGraph n) : Prop :=
+  ∀ i : Fin n, ∃ j : Fin n, j ≠ i ∧ (i, j) ∈ directedSupportGraph G
+
+/-- For non-degenerate graphs, structural commutant elements are diagonal -/
+theorem structural_commutant_is_diagonal' (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (X : Matrix (Fin n) (Fin n) ℂ)
+    (hX : IsInStructuralCommutant G X) (i j : Fin n) (hij : i ≠ j) :
+    X i j = 0 := by
+  -- Every vertex has an edge, so X is diagonal
+  obtain ⟨k, hk_ne, hk_edge⟩ := hND i
+  -- Edge (i,k) means row i is zero except diagonal
+  exact structural_commutant_row_zero G X hX i k hk_ne.symm hk_edge j hij.symm
+
+/-- Helper: For diagonal X with constant diagonal per SCC, [X, A] = 0 when A has support in G.
+    Key insight: [X, A]_ab = (X_aa - X_bb) A_ab for diagonal X.
+    If A_ab ≠ 0 for a ≠ b, then (a,b) is an edge, so a and b are in the same SCC,
+    hence X_aa = X_bb, making [X, A]_ab = 0. -/
+theorem commutator_diagSCCConst_eq_zero (G : QuantumNetworkGraph n)
+    (X : Matrix (Fin n) (Fin n) ℂ)
+    (hDiag : ∀ i j : Fin n, i ≠ j → X i j = 0)
+    (hSCC : ∀ i j : Fin n, MutuallyReachable (directedSupportGraph G) i j → X i i = X j j)
+    (A : Matrix (Fin n) (Fin n) ℂ)
+    (hAsupp : ∀ i j : Fin n, i ≠ j → A i j ≠ 0 → (i, j) ∈ directedSupportGraph G) :
+    ⟦X, A⟧ = 0 := by
+  ext a b
+  simp only [commutator, Matrix.sub_apply, Matrix.mul_apply, Matrix.zero_apply]
+  -- [X, A]_ab = Σ_k (X_ak A_kb - A_ak X_kb)
+  -- For diagonal X: X_ak = 0 unless a = k, and X_kb = 0 unless k = b
+  rw [Finset.sum_eq_single a, Finset.sum_eq_single b]
+  · -- Main terms: X_aa A_ab - A_ab X_bb
+    by_cases hab : a = b
+    · subst hab; ring
+    · -- a ≠ b: if A_ab ≠ 0, then (a,b) is an edge, so X_aa = X_bb
+      by_cases hAab : A a b = 0
+      · simp [hAab]
+      · have hedge := hAsupp a b hab hAab
+        have hMR : MutuallyReachable (directedSupportGraph G) a b := by
+          constructor
+          · exact Reachable.step a b b hedge (Reachable.refl b)
+          · exact Reachable.step b a a (directedSupportGraph_symm G a b hedge) (Reachable.refl a)
+        rw [hSCC a b hMR]; ring
+  · intro k _ hkb
+    simp [hDiag k b hkb]
+  · intro hb; exact absurd (Finset.mem_univ b) hb
+  · intro k _ hka
+    simp [hDiag a k hka.symm]
+  · intro ha; exact absurd (Finset.mem_univ a) ha
+
 /-- The structural commutant is contained in any specific commutant.
     If X commutes with all operators in the test set, it commutes with any
     specific H and L_k that have support in G.
 
-    Mathematical justification:
-    Let X ∈ C_struct(G), meaning [X, E_ij] = 0 for all matrix units E_ij in the test set S*(G).
+    For non-degenerate graphs, X is diagonal with constant diagonal per SCC,
+    so [X, A] = (X_aa - X_bb) A_ab = 0 whenever A_ab ≠ 0 (since a,b in same SCC).
 
-    Key properties (proved above):
-    - [X, E_ij] = 0 implies X_ki = 0 for k ≠ i (comm_matrixUnit_zero_col)
-    - [X, E_ij] = 0 implies X_jl = 0 for l ≠ j (comm_matrixUnit_zero_row)
-    - [X, E_ij] = 0 implies X_ii = X_jj (comm_matrixUnit_diag_eq)
-
-    Consequence: If the graph G has enough edges (e.g., strongly connected),
-    then X must be block-diagonal with constant blocks within each SCC.
-
-    For any matrix A = Σ_{i,j} A_ij E_ij with support in G:
-    [X, A] = Σ_{i,j} A_ij [X, E_ij]
-
-    For off-diagonal terms where A_ij ≠ 0:
-    - If A = H (Hamiltonian): by hasSupport, (i,j) ∈ coherentEdges, so E_ij ∈ testSet
-    - If A = L_k (jump op): by hasSupport, matrix unit is in testSet
-
-    Thus [X, E_ij] = 0 for all terms where A_ij ≠ 0, giving [X, A] = 0.
-
-    The diagonal terms [X, E_ii] vanish because X is block-diagonal with
-    constant diagonal within each SCC (from the structural commutant constraints).
-
-    Full proof requires infrastructure for:
-    - Matrix decomposition into sums of matrix units
-    - Sum manipulation for commutators
-    - Block structure analysis
-
-    For the strongly connected case (k=1), this is fully proved below
-    (see structuralCommutant_le_commutant_of_strongly_connected). -/
-axiom structuralCommutant_le_commutant (L : Lindbladian n) (G : QuantumNetworkGraph n)
-    (hSupp : L.hasSupport G) :
-    structuralCommutant G ≤ commutantSubmodule L
+    Note: This theorem requires the graph to be non-degenerate (every vertex has
+    at least one edge). For degenerate graphs with isolated vertices, the structural
+    commutant may be larger than specific commutants. -/
+theorem structuralCommutant_le_commutant (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (hSupp : L.hasSupport G) :
+    structuralCommutant G ≤ commutantSubmodule L := by
+  intro X hX
+  simp only [commutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq, IsInCommutant]
+  obtain ⟨hHsupp, hLsupp⟩ := hSupp
+  -- Helper: X is in structural commutant
+  have hXstruct : IsInStructuralCommutant G X := hX
+  -- For non-degenerate graphs, X is diagonal with constant diagonal per SCC
+  have hDiag : ∀ i j : Fin n, i ≠ j → X i j = 0 :=
+    fun i j hij => structural_commutant_is_diagonal' G hND X hXstruct i j hij
+  have hSCCeq : ∀ i j : Fin n, MutuallyReachable (directedSupportGraph G) i j → X i i = X j j :=
+    fun i j h => structural_commutant_diag_eq_scc G X hXstruct i j h
+  refine ⟨?_, ?_, ?_⟩
+  · -- [X, H] = 0
+    apply commutator_diagSCCConst_eq_zero G X hDiag hSCCeq
+    intro i j hij hHij
+    have h := hHsupp i j hij hHij
+    unfold directedSupportGraph
+    simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+    left; exact ⟨(i, j), h, Or.inl rfl⟩
+  · -- [X, L_k] = 0 for all L_k
+    intro Lk hLk
+    apply commutator_diagSCCConst_eq_zero G X hDiag hSCCeq
+    intro i j hij hLkij
+    have h := hLsupp Lk hLk i j hij hLkij
+    unfold directedSupportGraph
+    simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+    right; exact ⟨(j, i), h, Or.inr rfl⟩
+  · -- [X, L_k†] = 0 for all L_k
+    intro Lk hLk
+    apply commutator_diagSCCConst_eq_zero G X hDiag hSCCeq
+    intro i j hij hLkdij
+    simp only [dagger, conjTranspose_apply] at hLkdij
+    have hLkji : Lk j i ≠ 0 := by intro h; simp [h] at hLkdij
+    have h := hLsupp Lk hLk j i hij.symm hLkji
+    unfold directedSupportGraph
+    simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+    right; exact ⟨(i, j), h, Or.inl rfl⟩
 
 /-- Structural deficiency is a lower bound on quantum deficiency.
 
@@ -566,15 +628,23 @@ axiom structuralCommutant_le_commutant (L : Lindbladian n) (G : QuantumNetworkGr
     1. structuralCommutant G ≤ commutantSubmodule L (by structuralCommutant_le_commutant)
     2. dim(structuralCommutant G) ≤ dim(commutantSubmodule L)
     3. dim(commutantSubmodule L) = dim(stationarySubspace L) (by commutant_dim_eq_stationary_dim)
-    4. structuralDeficiency G = dim(structural) - 1 ≤ dim(stationary) - 1 = quantumDeficiency L -/
+    4. structuralDeficiency G = dim(structural) - 1 ≤ dim(stationary) - 1 = quantumDeficiency L
+
+    Note: This theorem requires the graph to be non-degenerate. For degenerate graphs,
+    the structural commutant may be larger than specific commutants due to unconstrained
+    entries between isolated vertices.
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem
+    which establishes dim(commutant) = dim(stationary). -/
 theorem structural_le_deficiency (L : Lindbladian n) (G : QuantumNetworkGraph n)
-    (hSupp : L.hasSupport G) :
+    (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
+    (hFaith : HasFaithfulStationaryState L) :
     structuralDeficiency G ≤ quantumDeficiency L := by
   unfold structuralDeficiency quantumDeficiency
   -- dim(structuralCommutant) ≤ dim(commutant) = dim(stationary)
-  have hLe := structuralCommutant_le_commutant L G hSupp
+  have hLe := structuralCommutant_le_commutant L G hND hSupp
   have hDimLe := Submodule.finrank_mono hLe
-  rw [commutant_dim_eq_stationary_dim] at hDimLe
+  rw [commutant_dim_eq_stationary_dim L hFaith] at hDimLe
   omega
 
 /-! ### Structural Deficiency Formula -/
@@ -656,21 +726,6 @@ theorem structural_deficiency_zero_of_strongly_connected (G : QuantumNetworkGrap
 
 /-! ### Non-Degenerate Graphs and General Formula -/
 
-/-- A graph is non-degenerate if every vertex has at least one edge.
-    This ensures every row and column of commutant elements is diagonal. -/
-def IsNonDegenerate (G : QuantumNetworkGraph n) : Prop :=
-  ∀ i : Fin n, ∃ j : Fin n, j ≠ i ∧ (i, j) ∈ directedSupportGraph G
-
-/-- For non-degenerate graphs, structural commutant elements are diagonal -/
-theorem structural_commutant_is_diagonal (G : QuantumNetworkGraph n)
-    (hND : IsNonDegenerate G) (X : Matrix (Fin n) (Fin n) ℂ)
-    (hX : IsInStructuralCommutant G X) (i j : Fin n) (hij : i ≠ j) :
-    X i j = 0 := by
-  -- Every vertex has an edge, so X is diagonal
-  obtain ⟨k, hk_ne, hk_edge⟩ := hND i
-  -- Edge (i,k) means row i is zero except diagonal
-  exact structural_commutant_row_zero G X hX i k hk_ne.symm hk_edge j hij.symm
-
 /-- The diagonal indicator for an SCC: 1 if vertex is in that SCC, 0 otherwise -/
 noncomputable def sccIndicator (edges : Finset (Fin n × Fin n)) (rep : Fin n) (i : Fin n) : ℂ := by
   classical
@@ -704,7 +759,7 @@ theorem structural_commutant_block_diagonal (G : QuantumNetworkGraph n)
   · ext i j
     by_cases hij : i = j
     · simp [hij, Matrix.diagonal_apply]
-    · simp [hij, Matrix.diagonal_apply, structural_commutant_is_diagonal G hND X hX i j hij]
+    · simp [hij, Matrix.diagonal_apply, structural_commutant_is_diagonal' G hND X hX i j hij]
 
 /-- The subspace of diagonal matrices with constant diagonal per SCC -/
 noncomputable def diagConstPerSCC (edges : Finset (Fin n × Fin n)) :
@@ -773,7 +828,7 @@ theorem structural_commutant_eq_diagConstPerSCC (G : QuantumNetworkGraph n)
   constructor
   · intro hX
     constructor
-    · exact fun i j hij => structural_commutant_is_diagonal G hND X hX i j hij
+    · exact fun i j hij => structural_commutant_is_diagonal' G hND X hX i j hij
     · exact fun i j hmr => structural_commutant_diag_eq_scc G X hX i j hmr
   · intro ⟨hDiag, hSCC⟩
     intro A hA
@@ -917,38 +972,250 @@ theorem structural_deficiency_formula_nondegenerate (G : QuantumNetworkGraph n)
   rw [structural_commutant_eq_diagConstPerSCC G hND]
   rw [finrank_diagConstPerSCC]
 
+/-- If there's a nontrivial path from i to j (i ≠ j), then i has an edge to some k ≠ i.
+    This extracts the first "real" edge that leaves vertex i.
+
+    Proof: By induction on the Reachable path. In the step case, we have an edge (i, m).
+    If m ≠ i, we're done. If m = i (self-loop), the subpath from m = i to j is still
+    nontrivial (since j ≠ i), and we can recurse. -/
+theorem first_edge_different {edges : Finset (Fin n × Fin n)} {i j : Fin n}
+    (h : Reachable edges i j) (hne : i ≠ j) :
+    ∃ k, k ≠ i ∧ (i, k) ∈ edges := by
+  induction h with
+  | refl => exact absurd rfl hne
+  | @step x1 mid1 y1 hedge1 hrest1 ih1 =>
+    -- hedge1 : (x1, mid1) ∈ edges, goal: ∃ k, k ≠ x1 ∧ (x1, k) ∈ edges
+    by_cases hmid1_ne : mid1 ≠ x1
+    · -- Non-self-loop: found edge to different vertex
+      exact ⟨mid1, hmid1_ne, hedge1⟩
+    · -- Self-loop case: mid1 = x1, use IH
+      push_neg at hmid1_ne
+      -- hmid1_ne : mid1 = x1
+      -- ih1 : mid1 ≠ y1 → ∃ k, k ≠ mid1 ∧ (mid1, k) ∈ edges
+      -- After rewriting mid1 = x1: ih1 : x1 ≠ y1 → ∃ k, k ≠ x1 ∧ (x1, k) ∈ edges
+      rw [hmid1_ne] at ih1
+      exact ih1 hne
+
+/-- Strongly connected graphs with n ≥ 2 are non-degenerate (every vertex has edges).
+    In a strongly connected graph, every vertex can reach every other vertex,
+    so every vertex must have at least one outgoing edge.
+
+    Note: For n = 1, strongly connected is vacuously true but non-degenerate is false
+    (since there's no j ≠ i for the single vertex). -/
+theorem stronglyConnected_isNonDegenerate (G : QuantumNetworkGraph n)
+    (hn : n ≥ 2)
+    (hSC : isStronglyConnected (directedSupportGraph G)) :
+    IsNonDegenerate G := by
+  intro i
+  -- Pick some j ≠ i (exists since n ≥ 2)
+  obtain ⟨j, hj⟩ : ∃ j : Fin n, j ≠ i := by
+    by_contra h
+    push_neg at h
+    have : Fintype.card (Fin n) ≤ 1 := by
+      rw [Fintype.card_le_one_iff]
+      intro a b
+      rw [h a, h b]
+    simp only [Fintype.card_fin] at this
+    omega
+  -- i can reach j (strongly connected)
+  have hreach := (hSC i j).1
+  -- Extract first edge to a different vertex
+  exact first_edge_different hreach hj.symm
+
 /-- **Structural Deficiency Formula** (Theorem 3.5 in paper)
 
-    Let G be a quantum network graph and let k be the number of strongly
-    connected components of D(G). Then:
-
+    For a non-degenerate quantum network graph G with k = numSCCs(D(G)):
     δ_Q^struct(G) = k - 1
 
-    Proof outline:
-    1. The algebra A(G) = ⟨S*(G)⟩ acts block-diagonally w.r.t. SCCs
-    2. Within each SCC S_i, the restriction of A(G) equals M_{n_i}(ℂ)
-    3. Therefore A(G) ≅ M_{n_1}(ℂ) ⊕ ··· ⊕ M_{n_k}(ℂ)
-    4. The commutant is A(G)' ≅ ℂ^k
-    5. Thus dim(C_struct(G)) = k and δ_Q^struct(G) = k - 1
+    Note: The formula requires non-degeneracy (every vertex has an edge).
+    For graphs with isolated vertices, the structural commutant is larger. -/
+theorem structural_deficiency_formula (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) :
+    structuralDeficiency G = numSCCs (directedSupportGraph G) - 1 :=
+  structural_deficiency_formula_nondegenerate G hND
 
-    The k = 1 case (strongly connected) is fully proved above.
-    The non-degenerate case is proved in structural_deficiency_formula_nondegenerate.
-    The general case (allowing isolated vertices) requires special handling. -/
-axiom structural_deficiency_formula (G : QuantumNetworkGraph n) :
-    structuralDeficiency G = numSCCs (directedSupportGraph G) - 1
+/-- [E_vv, E_pq] = 0 when v ≠ p and v ≠ q -/
+theorem commutator_matrixUnit_diag_offdiag (v p q : Fin n) (hvp : v ≠ p) (hvq : v ≠ q) :
+    ⟦matrixUnit v v, matrixUnit p q⟧ = 0 := by
+  ext a b
+  simp only [commutator, Matrix.sub_apply, Matrix.mul_apply, matrixUnit_apply, Matrix.zero_apply]
+  rw [Finset.sum_eq_single v, Finset.sum_eq_single q]
+  · -- Main terms: both are 0
+    by_cases hav : a = v <;> by_cases hbv : b = v <;>
+    simp [hav, hbv, hvp, hvq, hvp.symm, hvq.symm]
+  · intro k _ hkq; simp [hkq]
+  · intro hq; exact absurd (Finset.mem_univ q) hq
+  · intro k _ hkv; simp [hkv]
+  · intro hv; exact absurd (Finset.mem_univ v) hv
 
-/-- Structural deficiency zero iff strongly connected -/
-theorem structural_deficiency_zero_iff_strongly_connected (G : QuantumNetworkGraph n) :
+/-- If vertex v is isolated (no edges to different vertices), then E_vv is in the structural commutant.
+    Note: hIso allows self-loops (v,v), but [E_vv, E_vv] = 0 trivially. -/
+theorem matrixUnit_diag_mem_structuralCommutant_of_isolated (G : QuantumNetworkGraph n)
+    (v : Fin n) (hIso : ∀ j : Fin n, j ≠ v → (v, j) ∉ directedSupportGraph G) :
+    matrixUnit v v ∈ structuralCommutant G := by
+  simp only [structuralCommutant, structuralCommutantSet, Submodule.mem_mk,
+             Set.mem_setOf_eq, IsInStructuralCommutant]
+  intro E hE
+  -- E is some E_pq in the test set. Either (p,q) involves v (only possible if self-loop),
+  -- or p ≠ v and q ≠ v.
+  unfold testSet at hE
+  simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert,
+             Finset.mem_singleton] at hE
+  -- Helper: for edges not involving v, the commutator vanishes
+  have aux : ∀ p q : Fin n, p ≠ v → q ≠ v → ⟦matrixUnit v v, matrixUnit p q⟧ = 0 :=
+    fun p q hp hq => commutator_matrixUnit_diag_offdiag v p q hp.symm hq.symm
+  -- Analyze each case of E
+  rcases hE with ⟨e, he, (rfl | rfl)⟩ | ⟨e, he, (rfl | rfl)⟩
+  all_goals {
+    -- Check if this is a self-loop or not
+    by_cases h1 : e.1 = v
+    · by_cases h2 : e.2 = v
+      · -- Self-loop case: E = E_vv, and [E_vv, E_vv] = 0
+        simp only [h1, h2, commutator, sub_self]
+      · -- e.1 = v but e.2 ≠ v, contradicts hIso
+        have he1 : e.1 = v := h1
+        have he2 : e.2 ≠ v := h2
+        have hedge : (v, e.2) ∈ directedSupportGraph G := by
+          unfold directedSupportGraph
+          simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+          first | left; exact ⟨e, he, Or.inl (by simp [he1])⟩
+                | right; exact ⟨e, he, Or.inl (by simp [he1])⟩
+        exact absurd hedge (hIso e.2 he2)
+    · by_cases h2 : e.2 = v
+      · -- e.1 ≠ v but e.2 = v, contradicts hIso (edge (v, e.1) exists by symmetry)
+        have he1 : e.1 ≠ v := h1
+        have he2 : e.2 = v := h2
+        have hedge : (v, e.1) ∈ directedSupportGraph G := by
+          unfold directedSupportGraph
+          simp only [Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+          first | left; exact ⟨e, he, Or.inr (by simp [he2])⟩
+                | right; exact ⟨e, he, Or.inr (by simp [he2])⟩
+        exact absurd hedge (hIso e.1 he1)
+      · -- Neither endpoint is v: use aux
+        first | exact aux e.1 e.2 h1 h2 | exact aux e.2 e.1 h2 h1
+  }
+
+/-- E_vv and I are linearly independent when n ≥ 2 -/
+theorem matrixUnit_diag_linearIndependent_one (v : Fin n) (hn : n ≥ 2) :
+    LinearIndependent ℂ ![matrixUnit v v, (1 : Matrix (Fin n) (Fin n) ℂ)] := by
+  rw [Fintype.linearIndependent_iff]
+  intro f hf
+  -- hf : f 0 • E_vv + f 1 • I = 0
+  -- At position (v,v): f 0 * 1 + f 1 * 1 = 0, so f 0 + f 1 = 0
+  -- At position (w,w) for w ≠ v: f 0 * 0 + f 1 * 1 = 0, so f 1 = 0
+  -- Therefore f 0 = 0 as well
+  have hw : ∃ w : Fin n, w ≠ v := by
+    by_contra h
+    push_neg at h
+    have : Fintype.card (Fin n) ≤ 1 := Fintype.card_le_one_iff.mpr (fun a b => (h a).trans (h b).symm)
+    simp only [Fintype.card_fin] at this
+    omega
+  obtain ⟨w, hwv⟩ := hw
+  -- The sum is f 0 • E_vv + f 1 • I
+  have hsum : ∑ i : Fin 2, f i • ![matrixUnit v v, 1] i = f 0 • matrixUnit v v + f 1 • 1 := by
+    simp only [Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons]
+  rw [hsum] at hf
+  have h1 : f 1 = 0 := by
+    have := congrFun (congrFun hf w) w
+    simp only [Matrix.add_apply, Matrix.smul_apply, smul_eq_mul, Matrix.zero_apply,
+               matrixUnit_apply, hwv, false_and, ↓reduceIte, mul_zero, Matrix.one_apply,
+               eq_self_iff_true, mul_one, zero_add] at this
+    exact this
+  have h0 : f 0 = 0 := by
+    have := congrFun (congrFun hf v) v
+    simp only [Matrix.add_apply, Matrix.smul_apply, smul_eq_mul, Matrix.zero_apply,
+               matrixUnit_apply, eq_self_iff_true, and_self, ↓reduceIte, mul_one,
+               Matrix.one_apply, h1, add_zero] at this
+    exact this
+  intro i
+  fin_cases i <;> assumption
+
+/-- If the graph is not strongly connected and n ≥ 2, then dim(structuralCommutant) ≥ 2 -/
+theorem finrank_structuralCommutant_ge_two_of_not_stronglyConnected (G : QuantumNetworkGraph n)
+    (hn : n ≥ 2) (hNotSC : ¬isStronglyConnected (directedSupportGraph G)) :
+    Module.finrank ℂ (structuralCommutant G) ≥ 2 := by
+  -- Either the graph is non-degenerate or has an isolated vertex
+  by_cases hND : IsNonDegenerate G
+  · -- Non-degenerate case: use the formula dim = numSCCs
+    rw [structural_commutant_eq_diagConstPerSCC G hND, finrank_diagConstPerSCC]
+    -- Not strongly connected means numSCCs ≥ 2
+    rw [stronglyConnected_iff_one_scc] at hNotSC
+    have hge1 := numSCCs_pos (directedSupportGraph G)
+    omega
+  · -- Has isolated vertex: E_vv and I are both in commutant
+    unfold IsNonDegenerate at hND
+    push_neg at hND
+    obtain ⟨v, hv⟩ := hND
+    -- hv : ∀ j, j ≠ v → (v, j) ∉ directedSupportGraph G
+    -- This means v is isolated
+    have hEvv : matrixUnit v v ∈ structuralCommutant G :=
+      matrixUnit_diag_mem_structuralCommutant_of_isolated G v hv
+    have hOne : (1 : Matrix (Fin n) (Fin n) ℂ) ∈ structuralCommutant G :=
+      scalars_le_structural_commutant G (Submodule.mem_span_singleton_self 1)
+    -- E_vv and I are linearly independent in the ambient space
+    have hLI := matrixUnit_diag_linearIndependent_one v hn
+    -- Define the elements in the submodule
+    let e0 : structuralCommutant G := ⟨matrixUnit v v, hEvv⟩
+    let e1 : structuralCommutant G := ⟨1, hOne⟩
+    -- Show linear independence in the submodule
+    have hLI' : LinearIndependent ℂ ![e0, e1] := by
+      rw [Fintype.linearIndependent_iff]
+      intro f hf
+      -- hf : f 0 • e0 + f 1 • e1 = 0 (in submodule)
+      have hsum : ∑ i : Fin 2, f i • ![e0, e1] i = f 0 • e0 + f 1 • e1 := by
+        simp only [Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons]
+      rw [hsum] at hf
+      -- Apply to ambient space
+      have hf' : (f 0 • e0 + f 1 • e1 : structuralCommutant G).val = 0 := by
+        rw [hf]; rfl
+      simp only [Submodule.coe_add, Submodule.coe_smul] at hf'
+      -- Now use the linear independence in the ambient space
+      have hw : ∃ w : Fin n, w ≠ v := by
+        by_contra h
+        push_neg at h
+        have : Fintype.card (Fin n) ≤ 1 := Fintype.card_le_one_iff.mpr (fun a b => (h a).trans (h b).symm)
+        simp only [Fintype.card_fin] at this
+        omega
+      obtain ⟨w, hwv⟩ := hw
+      have h1 : f 1 = 0 := by
+        have := congrFun (congrFun hf' w) w
+        simp only [Matrix.add_apply, Matrix.smul_apply, smul_eq_mul, Matrix.zero_apply,
+                   matrixUnit_apply, hwv, false_and, ↓reduceIte, mul_zero, Matrix.one_apply,
+                   eq_self_iff_true, mul_one, zero_add] at this
+        exact this
+      have h0 : f 0 = 0 := by
+        have := congrFun (congrFun hf' v) v
+        simp only [Matrix.add_apply, Matrix.smul_apply, smul_eq_mul, Matrix.zero_apply,
+                   matrixUnit_apply, eq_self_iff_true, and_self, ↓reduceIte, mul_one,
+                   Matrix.one_apply, h1, add_zero] at this
+        exact this
+      intro i
+      fin_cases i <;> assumption
+    -- Therefore dim ≥ 2
+    calc Module.finrank ℂ (structuralCommutant G)
+        ≥ Fintype.card (Fin 2) := hLI'.fintype_card_le_finrank
+      _ = 2 := by simp
+
+/-- Structural deficiency zero iff strongly connected (for n ≥ 2) -/
+theorem structural_deficiency_zero_iff_strongly_connected (G : QuantumNetworkGraph n)
+    (hn : n ≥ 2) :
     structuralDeficiency G = 0 ↔ isStronglyConnected (directedSupportGraph G) := by
-  rw [structural_deficiency_formula, stronglyConnected_iff_one_scc]
-  have hPos := numSCCs_pos (directedSupportGraph G)
-  omega
+  constructor
+  · intro hDef0
+    -- Proof by contradiction: if not strongly connected, dim ≥ 2, so δ ≥ 1
+    by_contra hNotSC
+    have hDim2 := finrank_structuralCommutant_ge_two_of_not_stronglyConnected G hn hNotSC
+    unfold structuralDeficiency at hDef0
+    omega
+  · intro hSC
+    exact structural_deficiency_zero_of_strongly_connected G hSC
 
-/-- Structurally ergodic iff strongly connected -/
-theorem structurallyErgodic_iff_stronglyConnected (G : QuantumNetworkGraph n) :
+/-- Structurally ergodic iff strongly connected (for n ≥ 2) -/
+theorem structurallyErgodic_iff_stronglyConnected (G : QuantumNetworkGraph n)
+    (hn : n ≥ 2) :
     IsStructurallyErgodic G ↔ isStronglyConnected (directedSupportGraph G) := by
   unfold IsStructurallyErgodic
-  exact structural_deficiency_zero_iff_strongly_connected G
+  exact structural_deficiency_zero_iff_strongly_connected G hn
 
 /-! ### Extremal Cases -/
 
@@ -956,7 +1223,7 @@ theorem structurallyErgodic_iff_stronglyConnected (G : QuantumNetworkGraph n) :
 theorem structural_deficiency_strongly_connected (G : QuantumNetworkGraph n)
     (hSC : isStronglyConnected (directedSupportGraph G)) :
     structuralDeficiency G = 0 :=
-  (structural_deficiency_zero_iff_strongly_connected G).mpr hSC
+  structural_deficiency_zero_of_strongly_connected G hSC
 
 /-- In an empty graph, only reflexive reachability holds -/
 theorem reachable_empty_iff (i j : Fin n) :
@@ -998,11 +1265,75 @@ theorem numSCCs_empty (n : ℕ) [NeZero n] :
   -- So the image has the same cardinality as the domain
   rw [Finset.card_image_of_injective _ h_inj, Finset.card_fin]
 
-/-- Maximum structural deficiency is n-1 when there are no edges -/
-theorem structural_deficiency_max (G : QuantumNetworkGraph n)
+/-- Empty directed support graph means no coherent or jump edges -/
+theorem directedSupportGraph_empty_iff (G : QuantumNetworkGraph n) :
+    directedSupportGraph G = ∅ ↔ G.coherentEdges = ∅ ∧ G.jumpEdges = ∅ := by
+  unfold directedSupportGraph
+  simp only [Finset.union_eq_empty]
+  constructor
+  · intro ⟨hC, hJ⟩
+    constructor
+    · by_contra h
+      have hne : G.coherentEdges.Nonempty := Finset.nonempty_iff_ne_empty.mpr h
+      obtain ⟨e, he⟩ := hne
+      have : (e.1, e.2) ∈ (∅ : Finset (Fin n × Fin n)) := by
+        rw [← hC]
+        simp only [Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+        exact ⟨e, he, Or.inl rfl⟩
+      simp at this
+    · by_contra h
+      have hne : G.jumpEdges.Nonempty := Finset.nonempty_iff_ne_empty.mpr h
+      obtain ⟨e, he⟩ := hne
+      have : (e.1, e.2) ∈ (∅ : Finset (Fin n × Fin n)) := by
+        rw [← hJ]
+        simp only [Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+        exact ⟨e, he, Or.inl rfl⟩
+      simp at this
+  · intro ⟨hC, hJ⟩
+    simp only [hC, hJ, Finset.biUnion_empty, and_self]
+
+/-- For an empty graph (no edges), the test set is empty -/
+theorem testSet_empty (G : QuantumNetworkGraph n)
     (hEmpty : directedSupportGraph G = ∅) :
-    structuralDeficiency G = n - 1 := by
-  rw [structural_deficiency_formula, hEmpty, numSCCs_empty]
+    testSet G = ∅ := by
+  unfold testSet
+  have ⟨hCoh, hJump⟩ := directedSupportGraph_empty_iff G |>.mp hEmpty
+  simp only [hCoh, hJump, Finset.biUnion_empty, Finset.empty_union]
+
+/-- For an empty graph (no edges), the structural commutant is all of M_n(ℂ).
+
+    When there are no edges, testSet = ∅, so every matrix X satisfies
+    [X, E] = 0 for all E ∈ ∅ (vacuously true).
+
+    Note: The structural deficiency formula δ = k - 1 does NOT apply here,
+    since it requires non-degeneracy (every vertex must have an edge).
+    For the empty graph: structuralDeficiency = n² - 1, not n - 1. -/
+theorem structural_commutant_empty (G : QuantumNetworkGraph n)
+    (hEmpty : directedSupportGraph G = ∅) :
+    structuralCommutant G = ⊤ := by
+  ext X
+  constructor
+  · intro _; exact Submodule.mem_top
+  · intro _
+    -- Show X is in structuralCommutant G
+    simp only [structuralCommutant, structuralCommutantSet, Submodule.mem_mk,
+               Set.mem_setOf_eq, IsInStructuralCommutant]
+    intro E hE
+    rw [testSet_empty G hEmpty] at hE
+    exact absurd hE (Finset.not_mem_empty E)
+
+/-- Structural deficiency of an empty graph is n² - 1 -/
+theorem structural_deficiency_empty (G : QuantumNetworkGraph n)
+    (hEmpty : directedSupportGraph G = ∅) :
+    structuralDeficiency G = n ^ 2 - 1 := by
+  unfold structuralDeficiency
+  rw [structural_commutant_empty G hEmpty]
+  rw [finrank_top]
+  -- finrank ℂ (Matrix (Fin n) (Fin n) ℂ) = n * n * 1 = n²
+  have hfr : Module.finrank ℂ (Matrix (Fin n) (Fin n) ℂ) = n * n := by
+    simp only [Module.finrank_matrix, Fintype.card_fin, Module.finrank_self, mul_one]
+  rw [hfr]
+  ring
 
 /-! ### Generic vs Non-Generic Parameters -/
 
@@ -1011,20 +1342,237 @@ theorem structural_deficiency_max (G : QuantumNetworkGraph n)
 def deficiencyJumpLocus (G : QuantumNetworkGraph n) : Set (Lindbladian n) :=
   {L | L.hasSupport G ∧ quantumDeficiency L > structuralDeficiency G}
 
-/-- For Zariski-generic parameters, δ_Q(θ) = δ_Q^struct(G).
+/-- Construct a pure-dissipation Lindbladian from jump edges.
+    For each edge (i,j) ∈ jumpEdges (transition i → j), we include E_ji as a jump operator. -/
+noncomputable def jumpEdgeLindbladian (jumpEdges : Finset (Fin n × Fin n)) : Lindbladian n where
+  hamiltonian := 0
+  hamiltonian_hermitian := by simp [Matrix.IsHermitian]
+  jumpOps := (jumpEdges.toList.map fun e => matrixUnit e.2 e.1)
 
-    The set where δ_Q > δ_Q^struct is a proper algebraic subvariety,
-    so its complement is Zariski-open and dense.
+/-- The jump edge Lindbladian has support in a graph with those jump edges -/
+theorem jumpEdgeLindbladian_hasSupport (G : QuantumNetworkGraph n)
+    (hCoh : G.coherentEdges = ∅) :
+    (jumpEdgeLindbladian G.jumpEdges).hasSupport G := by
+  unfold Lindbladian.hasSupport jumpEdgeLindbladian
+  constructor
+  · -- Hamiltonian is 0, so no off-diagonal entries
+    intro i j _ hHij
+    simp at hHij
+  · -- Jump operators are E_ji for (i,j) ∈ jumpEdges
+    intro Lk hLk i j hij hLkij
+    simp only [List.mem_map] at hLk
+    obtain ⟨e, he, hLk_eq⟩ := hLk
+    rw [← hLk_eq] at hLkij
+    simp only [matrixUnit_apply] at hLkij
+    split_ifs at hLkij with h
+    · obtain ⟨hi, hj⟩ := h
+      subst hi hj
+      exact Finset.mem_toList.mp he
+    · simp at hLkij
 
-    Reference: Theorem 3.3(b) in paper -/
-axiom generic_deficiency_equals_structural (G : QuantumNetworkGraph n) :
-    ∃ L : Lindbladian n, L.hasSupport G ∧ quantumDeficiency L = structuralDeficiency G
+/-- For graphs with only jump edges that form a non-degenerate structure,
+    the commutant of the jump edge Lindbladian equals the structural commutant.
 
-/-- Rate-Robust Uniqueness: If G is structurally ergodic, generic parameters give δ_Q = 0 -/
+    This is because:
+    - [X, E_ji] = 0 for each jump edge (i,j)
+    - [X, E_ij] = 0 for each jump edge (i,j) (from the dagger condition)
+    - These exactly match the test set constraints for jump edges -/
+theorem jumpEdgeLindbladian_commutant_eq_structural (G : QuantumNetworkGraph n)
+    (hCoh : G.coherentEdges = ∅) (hND : IsNonDegenerate G) :
+    commutantSubmodule (jumpEdgeLindbladian G.jumpEdges) = structuralCommutant G := by
+  -- The two submodules are equal iff they have the same elements
+  apply le_antisymm
+  · -- commutant ⊆ structuralCommutant: X in commutant satisfies structural constraints
+    intro X hX
+    simp only [structuralCommutant, structuralCommutantSet, Set.mem_setOf_eq,
+               IsInStructuralCommutant, Submodule.mem_mk]
+    intro A hA
+    -- A is in the testSet G
+    simp only [testSet, Finset.mem_union, Finset.mem_biUnion] at hA
+    cases hA with
+    | inl hCohA =>
+      -- A comes from coherent edges, but G.coherentEdges = ∅
+      rw [hCoh] at hCohA
+      simp at hCohA
+    | inr hJumpA =>
+      -- A = E_e.2_e.1 or E_e.1_e.2 for some jump edge e
+      obtain ⟨e, he, hAe⟩ := hJumpA
+      simp only [Finset.mem_insert, Finset.mem_singleton] at hAe
+      simp only [commutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq, IsInCommutant] at hX
+      obtain ⟨_, hCommL, hCommLdag⟩ := hX
+      cases hAe with
+      | inl hA_eq =>
+        -- A = E_e.2_e.1, which is L_k for edge e
+        rw [hA_eq]
+        have hLk : matrixUnit e.2 e.1 ∈ (jumpEdgeLindbladian G.jumpEdges).jumpOps := by
+          simp only [jumpEdgeLindbladian, List.mem_map]
+          exact ⟨e, Finset.mem_toList.mpr he, rfl⟩
+        exact hCommL (matrixUnit e.2 e.1) hLk
+      | inr hA_eq =>
+        -- A = E_e.1_e.2, which is L_k† for edge e
+        rw [hA_eq]
+        have hLk : matrixUnit e.2 e.1 ∈ (jumpEdgeLindbladian G.jumpEdges).jumpOps := by
+          simp only [jumpEdgeLindbladian, List.mem_map]
+          exact ⟨e, Finset.mem_toList.mpr he, rfl⟩
+        have := hCommLdag (matrixUnit e.2 e.1) hLk
+        rwa [matrixUnit_dagger] at this
+  · -- structuralCommutant ⊆ commutant: follows from structuralCommutant_le_commutant
+    have hSupp := jumpEdgeLindbladian_hasSupport G hCoh
+    exact structuralCommutant_le_commutant (jumpEdgeLindbladian G.jumpEdges) G hND hSupp
+
+/-- For graphs with only jump edges, the jump edge Lindbladian achieves the structural deficiency.
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem
+    which establishes dim(commutant) = dim(stationary). -/
+theorem jumpEdgeLindbladian_deficiency (G : QuantumNetworkGraph n)
+    (hCoh : G.coherentEdges = ∅) (hND : IsNonDegenerate G)
+    (hFaith : HasFaithfulStationaryState (jumpEdgeLindbladian G.jumpEdges)) :
+    quantumDeficiency (jumpEdgeLindbladian G.jumpEdges) = structuralDeficiency G := by
+  unfold quantumDeficiency structuralDeficiency
+  rw [← commutant_dim_eq_stationary_dim _ hFaith]
+  rw [jumpEdgeLindbladian_commutant_eq_structural G hCoh hND]
+
+/-- Coherent edges are "covered" by jump edges if every coherent edge or its reverse is a jump edge.
+    This ensures that jump operators provide sufficient constraints for the structural commutant. -/
+def coherentEdgesCovered (G : QuantumNetworkGraph n) : Prop :=
+  ∀ e ∈ G.coherentEdges, e ∈ G.jumpEdges ∨ (e.2, e.1) ∈ G.jumpEdges
+
+/-- If coherent edges are covered by jump edges, the test set is determined by jump edges alone -/
+theorem testSet_eq_jumpEdges_testSet (G : QuantumNetworkGraph n)
+    (hCov : coherentEdgesCovered G) :
+    testSet G = G.jumpEdges.biUnion fun e => {matrixUnit e.2 e.1, matrixUnit e.1 e.2} := by
+  ext A
+  simp only [testSet, Finset.mem_union, Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton]
+  constructor
+  · intro h
+    cases h with
+    | inl hCoh =>
+      obtain ⟨e, he, hA⟩ := hCoh
+      -- hA : A = matrixUnit e.1 e.2 ∨ A = matrixUnit e.2 e.1
+      cases hCov e he with
+      | inl hInJump =>
+        -- e ∈ jumpEdges, need to show A in biUnion for e
+        -- biUnion for e gives {matrixUnit e.2 e.1, matrixUnit e.1 e.2}
+        cases hA with
+        | inl hA1 => exact ⟨e, hInJump, Or.inr hA1⟩
+        | inr hA2 => exact ⟨e, hInJump, Or.inl hA2⟩
+      | inr hRevInJump =>
+        -- (e.2, e.1) ∈ jumpEdges
+        -- For edge (e.2, e.1), biUnion gives {matrixUnit e.1 e.2, matrixUnit e.2 e.1}
+        cases hA with
+        | inl hA1 => exact ⟨(e.2, e.1), hRevInJump, Or.inl hA1⟩
+        | inr hA2 => exact ⟨(e.2, e.1), hRevInJump, Or.inr hA2⟩
+    | inr hJump => exact hJump
+  · intro h
+    right; exact h
+
+/-- For graphs where coherent edges are covered by jump edges,
+    the jump edge Lindbladian has support in G -/
+theorem jumpEdgeLindbladian_hasSupport_covered (G : QuantumNetworkGraph n) :
+    (jumpEdgeLindbladian G.jumpEdges).hasSupport G := by
+  unfold Lindbladian.hasSupport jumpEdgeLindbladian
+  constructor
+  · -- Hamiltonian is 0, so no off-diagonal entries
+    intro i j _ hHij
+    simp at hHij
+  · -- Jump operators are E_ji for (i,j) ∈ jumpEdges
+    intro Lk hLk i j hij hLkij
+    simp only [List.mem_map] at hLk
+    obtain ⟨e, he, hLk_eq⟩ := hLk
+    rw [← hLk_eq] at hLkij
+    simp only [matrixUnit_apply] at hLkij
+    split_ifs at hLkij with h
+    · obtain ⟨hi, hj⟩ := h
+      subst hi hj
+      exact Finset.mem_toList.mp he
+    · simp at hLkij
+
+/-- For graphs where coherent edges are covered by jump edges,
+    the commutant of the jump edge Lindbladian equals the structural commutant -/
+theorem jumpEdgeLindbladian_commutant_eq_structural_covered (G : QuantumNetworkGraph n)
+    (hCov : coherentEdgesCovered G) (hND : IsNonDegenerate G) :
+    commutantSubmodule (jumpEdgeLindbladian G.jumpEdges) = structuralCommutant G := by
+  apply le_antisymm
+  · -- commutant ⊆ structuralCommutant
+    intro X hX
+    simp only [structuralCommutant, structuralCommutantSet, Set.mem_setOf_eq,
+               IsInStructuralCommutant, Submodule.mem_mk]
+    intro A hA
+    rw [testSet_eq_jumpEdges_testSet G hCov] at hA
+    simp only [Finset.mem_biUnion, Finset.mem_insert, Finset.mem_singleton] at hA
+    obtain ⟨e, he, hAe⟩ := hA
+    simp only [commutantSubmodule, Submodule.mem_mk, Set.mem_setOf_eq, IsInCommutant] at hX
+    obtain ⟨_, hCommL, hCommLdag⟩ := hX
+    cases hAe with
+    | inl hA_eq =>
+      rw [hA_eq]
+      have hLk : matrixUnit e.2 e.1 ∈ (jumpEdgeLindbladian G.jumpEdges).jumpOps := by
+        simp only [jumpEdgeLindbladian, List.mem_map]
+        exact ⟨e, Finset.mem_toList.mpr he, rfl⟩
+      exact hCommL (matrixUnit e.2 e.1) hLk
+    | inr hA_eq =>
+      rw [hA_eq]
+      have hLk : matrixUnit e.2 e.1 ∈ (jumpEdgeLindbladian G.jumpEdges).jumpOps := by
+        simp only [jumpEdgeLindbladian, List.mem_map]
+        exact ⟨e, Finset.mem_toList.mpr he, rfl⟩
+      have := hCommLdag (matrixUnit e.2 e.1) hLk
+      rwa [matrixUnit_dagger] at this
+  · -- structuralCommutant ⊆ commutant
+    have hSupp := jumpEdgeLindbladian_hasSupport_covered G
+    exact structuralCommutant_le_commutant (jumpEdgeLindbladian G.jumpEdges) G hND hSupp
+
+/-- For graphs where coherent edges are covered, the jump edge Lindbladian achieves structural deficiency.
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem
+    which establishes dim(commutant) = dim(stationary). -/
+theorem jumpEdgeLindbladian_deficiency_covered (G : QuantumNetworkGraph n)
+    (hCov : coherentEdgesCovered G) (hND : IsNonDegenerate G)
+    (hFaith : HasFaithfulStationaryState (jumpEdgeLindbladian G.jumpEdges)) :
+    quantumDeficiency (jumpEdgeLindbladian G.jumpEdges) = structuralDeficiency G := by
+  unfold quantumDeficiency structuralDeficiency
+  rw [← commutant_dim_eq_stationary_dim _ hFaith]
+  rw [jumpEdgeLindbladian_commutant_eq_structural_covered G hCov hND]
+
+/-- For graphs with only jump edges (no coherent edges), there exists a Lindbladian
+    achieving the structural deficiency. This is proven constructively using pure dissipation.
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem. -/
+theorem generic_deficiency_equals_structural_jumpOnly (G : QuantumNetworkGraph n)
+    (hCoh : G.coherentEdges = ∅) (hND : IsNonDegenerate G)
+    (hFaith : HasFaithfulStationaryState (jumpEdgeLindbladian G.jumpEdges)) :
+    ∃ L : Lindbladian n, L.hasSupport G ∧ quantumDeficiency L = structuralDeficiency G :=
+  ⟨jumpEdgeLindbladian G.jumpEdges,
+   jumpEdgeLindbladian_hasSupport G hCoh,
+   jumpEdgeLindbladian_deficiency G hCoh hND hFaith⟩
+
+/-- For non-degenerate graphs where coherent edges are covered by jump edges,
+    there exists a Lindbladian achieving the structural deficiency.
+
+    Reference: Theorem 3.3(b) in paper
+
+    The key insight is that when jump edges cover all graph edges, the pure dissipation
+    Lindbladian (H = 0, jump operators on all jump edges) has commutant exactly equal
+    to the structural commutant.
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem. -/
+theorem generic_deficiency_equals_structural (G : QuantumNetworkGraph n)
+    (hCov : coherentEdgesCovered G) (hND : IsNonDegenerate G)
+    (hFaith : HasFaithfulStationaryState (jumpEdgeLindbladian G.jumpEdges)) :
+    ∃ L : Lindbladian n, L.hasSupport G ∧ quantumDeficiency L = structuralDeficiency G :=
+  ⟨jumpEdgeLindbladian G.jumpEdges,
+   jumpEdgeLindbladian_hasSupport_covered G,
+   jumpEdgeLindbladian_deficiency_covered G hCov hND hFaith⟩
+
+/-- Rate-Robust Uniqueness: If G is structurally ergodic and coherent edges are covered
+    by jump edges, generic parameters give δ_Q = 0.
+
+    The faithfulness hypothesis is required for the Evans-Høegh-Krohn theorem. -/
 theorem rate_robust_uniqueness (G : QuantumNetworkGraph n)
-    (hSE : IsStructurallyErgodic G) :
+    (hCov : coherentEdgesCovered G) (hND : IsNonDegenerate G)
+    (hSE : IsStructurallyErgodic G)
+    (hFaith : HasFaithfulStationaryState (jumpEdgeLindbladian G.jumpEdges)) :
     ∃ L : Lindbladian n, L.hasSupport G ∧ quantumDeficiency L = 0 := by
-  obtain ⟨L, hSupp, hDef⟩ := generic_deficiency_equals_structural G
+  obtain ⟨L, hSupp, hDef⟩ := generic_deficiency_equals_structural G hCov hND hFaith
   exact ⟨L, hSupp, by rw [hDef]; exact hSE⟩
 
 end DefectCRN.Quantum
