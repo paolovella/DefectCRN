@@ -75,3 +75,9 @@ from .classical import (
     analyze_classical_chain,
     verify_classical_reduction,
 )
+
+from .separation import (
+    find_separations,
+    detect_wedderburn_type,
+    SeparationExample,
+)
