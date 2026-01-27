@@ -1,0 +1,46 @@
+"""
+QMS Classification Computation Package
+
+This package provides tools for classifying quantum Markov semigroups.
+
+Modules:
+- algebra: Interaction algebra computation (A_int, Z(A_int), δ_cen)
+- spectrum: Lindbladian spectrum (eigenvalues, δ_Q, spectral gap)
+- dirichlet: Dirichlet form and detailed balance
+- examples: Standard test cases library
+
+Author: Paolo Vella
+"""
+
+from .algebra import (
+    compute_interaction_algebra,
+    compute_center,
+    central_deficiency,
+    analyze_interaction_algebra,
+    InteractionAlgebraInfo,
+)
+
+from .spectrum import (
+    construct_lindbladian,
+    compute_spectrum,
+    peripheral_spectrum,
+    quantum_deficiency,
+    analyze_lindbladian_spectrum,
+    LindbladianSpectrumInfo,
+)
+
+from .dirichlet import (
+    gns_inner_product,
+    check_detailed_balance,
+    compute_dirichlet_form,
+    dirichlet_rank,
+    analyze_dirichlet_form,
+    DirichletFormInfo,
+)
+
+from .examples import (
+    QMSExample,
+    get_all_examples,
+    analyze_example,
+    run_all_tests,
+)
