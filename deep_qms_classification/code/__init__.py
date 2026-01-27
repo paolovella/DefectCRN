@@ -44,3 +44,18 @@ from .examples import (
     analyze_example,
     run_all_tests,
 )
+
+from .structural import (
+    extract_graph_from_lindbladian,
+    compute_test_set,
+    compute_structural_commutant,
+    structural_deficiency,
+    analyze_structure,
+    StructuralInfo,
+)
+
+from .comparison import (
+    compare_example,
+    run_comparison,
+    ComparisonResult,
+)
