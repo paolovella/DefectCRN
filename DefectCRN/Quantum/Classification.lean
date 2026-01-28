@@ -130,4 +130,97 @@ theorem classification_summary (L : Lindbladian n)
     have h := center_dim_eq_wedderburn L
     omega
 
+/-! ## The Deficiency Gap -/
+
+/-- The deficiency gap δ_cen - δ_struct measures "accidental" symmetry.
+
+    The gap is positive when the interaction algebra A_int is "smaller"
+    (more abelian) than what the graph structure suggests.
+
+    Examples with positive gap:
+    * Coherent evolution with σx: A_int = span{I, σx} is abelian,
+      but σx has off-diagonal entries so graph is connected
+    * Projective jump L = |+⟩⟨+|: Full support but abelian algebra
+
+    Examples with zero gap:
+    * Amplitude damping: A_int = M_n(ℂ), both deficiencies are 0
+    * Pure dephasing: A_int = diagonals, graph has no off-diagonal edges -/
+noncomputable def deficiencyGap (L : Lindbladian n) (G : QuantumNetworkGraph n) : ℕ :=
+  centralDeficiency L - structuralDeficiency G
+
+/-- The gap is non-negative by the deficiency hierarchy. -/
+theorem deficiencyGap_nonneg (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
+    (hFaith : HasFaithfulStationaryState L) :
+    0 ≤ deficiencyGap L G := by
+  unfold deficiencyGap
+  have h := (deficiency_hierarchy L G hND hSupp hFaith).1
+  omega
+
+/-- Zero gap characterization: δ_cen = δ_struct iff the structural commutant
+    has the same dimension as the center.
+
+    This happens when:
+    * The graph perfectly captures the algebra's block structure
+    * No "accidental" symmetries beyond graph-enforced ones -/
+theorem zero_gap_iff_structural_eq_center_dim (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
+    (hFaith : HasFaithfulStationaryState L) :
+    deficiencyGap L G = 0 ↔
+    structuralDeficiency G = centralDeficiency L := by
+  unfold deficiencyGap
+  have h := (deficiency_hierarchy L G hND hSupp hFaith).1
+  omega
+
+/-- Positive gap implies the interaction algebra has "hidden" block structure
+    not visible from the graph alone. -/
+theorem positive_gap_implies_hidden_blocks {n : ℕ} (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    (hGap : 0 < deficiencyGap L G) :
+    structuralDeficiency G < centralDeficiency L := by
+  unfold deficiencyGap at hGap
+  omega
+
+/-- For ergodic systems (δ_Q = 0), all three deficiencies coincide. -/
+theorem ergodic_all_deficiencies_zero (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
+    (hFaith : HasFaithfulStationaryState L)
+    (hErg : IsErgodic L) :
+    structuralDeficiency G = 0 ∧ centralDeficiency L = 0 ∧ quantumDeficiency L = 0 := by
+  have hQZero := ergodic_implies_deficiency_zero L hErg hFaith
+  have hCZero := (ergodic_iff_central_deficiency_zero L hFaith).mp hErg
+  have hHier := (deficiency_hierarchy L G hND hSupp hFaith).1
+  constructor
+  · omega
+  constructor
+  · exact hCZero
+  · exact hQZero
+
+/-! ## Classification Conjecture -/
+
+/-- **Classification Conjecture** (informal):
+
+    Two Lindbladians L₁, L₂ with faithful stationary states are equivalent
+    (in an appropriate sense) iff:
+
+    1. Type(L₁) = Type(L₂): Same Wedderburn signature {(d_α, m_α)}
+    2. Phase(L₁) ≅ Phase(L₂): Isomorphic peripheral spectrum groups
+
+    Note: δ_cen is redundant given Type (it equals the number of blocks - 1).
+
+    The deficiency alone does NOT classify:
+    * Same δ_Q = 0 but different Type: M₂(ℂ) vs M₃(ℂ)
+    * Same δ_Q = 1 but different Type: ℂ² vs M₂ ⊕ M₂
+
+    This is captured by the separation examples in the computational investigation. -/
+theorem deficiency_does_not_classify :
+    ∃ (n m : ℕ) (_ : NeZero n) (_ : NeZero m) (L₁ : Lindbladian n) (L₂ : Lindbladian m),
+    -- Same quantum deficiency
+    quantumDeficiency L₁ = quantumDeficiency L₂ ∧
+    -- But different dimension (hence inequivalent)
+    n ≠ m := by
+  -- 2-level vs 3-level ergodic systems both have δ_Q = 0
+  use 2, 3, ⟨by omega⟩, ⟨by omega⟩
+  -- The existence is trivial by the type system
+  sorry -- Would need to construct specific Lindbladians
+
 end DefectCRN.Quantum

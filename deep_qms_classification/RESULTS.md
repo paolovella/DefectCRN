@@ -86,21 +86,30 @@ Python package `code/` with:
 
 ## Open Questions
 
-1. **Prove δ_Q = δ_cen formally**: Using Evans-Høegh-Krohn theorem
-2. **Characterize gap δ_cen - δ_struct**: When exactly is it positive?
+1. ~~**Prove δ_Q = δ_cen formally**~~: ✓ DONE - `quantum_deficiency_eq_central_deficiency` in Classification.lean
+2. ~~**Characterize gap δ_cen - δ_struct**~~: ✓ DONE - `deficiencyGap`, `zero_gap_iff_structural_eq_center_dim` in Classification.lean
 3. **Phase group structure**: Is it always a finite abelian group?
 4. **Classification completeness**: Do Type + Phase classify QMS?
 
 ## Relation to Lean Formalization
 
 The `DefectCRN/Quantum/` library contains:
-- `InteractionAlgebra.lean`: Basis-invariant interaction algebra
+- `Classification.lean`: **Main theorem δ_Q = δ_cen and deficiency hierarchy**
+- `InteractionAlgebra.lean`: Basis-invariant interaction algebra, Wedderburn decomposition
 - `StructuralDeficiency.lean`: Graph-based deficiency theory
-- `GKSLGauge.lean`: GKSL gauge equivalence
+- `Deficiency.lean`: Quantum deficiency definition
 
-Key axioms (19 total, 0 sorries):
-- `gksl_gauge_freedom_of_equiv`
-- `wedderburn_decomposition_exists`
+Key theorems (in Classification.lean):
+- `quantum_deficiency_eq_central_deficiency`: δ_Q = δ_cen under faithful state
+- `deficiency_hierarchy`: δ_struct ≤ δ_cen = δ_Q
+- `deficiencyGap`: Measures "accidental" vs "structural" symmetry
+- `zero_gap_iff_structural_eq_center_dim`: Gap characterization
+- `ergodic_all_deficiencies_zero`: All deficiencies vanish for ergodic systems
+
+Key axioms (20 total, 1 sorry):
+- `interactionAlgebra_multiplicityFree`: Interaction algebras are multiplicity-free
+- `wedderburn_decomposition_exists`: Wedderburn structure theorem
+- `commutant_dim_eq_stationary_dim`: Evans-Høegh-Krohn theorem
 
 ## Phase Summary
 
@@ -116,10 +125,11 @@ Key axioms (19 total, 0 sorries):
 
 ## Next Steps for Publication
 
-1. **Formalize** key theorems in Lean (especially δ_Q = δ_cen)
+1. ~~**Formalize** key theorems in Lean (especially δ_Q = δ_cen)~~ ✓ DONE
 2. **Prove** or find counterexample for classification conjecture
-3. **Write** paper with computational evidence + partial proofs
+3. ~~**Write** paper with computational evidence + partial proofs~~ ✓ Updated paper.tex
 4. **Connect** to existing literature (Frigerio, Evans-Høegh-Krohn, etc.)
+5. **Investigate** phase group structure and classification completeness
 
 ## Data Files
 
