@@ -223,4 +223,52 @@ theorem deficiency_does_not_classify :
   -- The existence is trivial by the type system
   sorry -- Would need to construct specific Lindbladians
 
+/-! ## Peripheral Spectrum -/
+
+/-- The peripheral spectrum is the set of eigenvalues on the imaginary axis.
+    These correspond to stationary or oscillatory modes. -/
+def peripheralSpectrum (L : Lindbladian n) : Set ℂ :=
+  {μ ∈ L.dualSpectrum | μ.re = 0}
+
+/-- For ergodic systems, the peripheral spectrum consists only of 0.
+    This is because dim(ker L) = 1, so 0 has multiplicity 1 and
+    all other eigenvalues have negative real part. -/
+theorem ergodic_peripheral_trivial (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L)
+    (hErg : IsErgodic L) :
+    peripheralSpectrum L = {0} := by
+  -- Ergodic means unique stationary state, so dim(ker L*) = 1
+  -- All other eigenvalues have Re < 0 (Perron-Frobenius type result)
+  sorry -- Requires spectral theory not yet in Mathlib
+
+/-- The phases of the peripheral spectrum form an additive group.
+    This is because if μ, ν are peripheral eigenvalues, so is μ + ν
+    (when the corresponding operators can be composed). -/
+def peripheralPhases (L : Lindbladian n) : Set ℝ :=
+  {ω : ℝ | (Complex.I * ω) ∈ peripheralSpectrum L}
+
+/-- **Conjecture**: The peripheral phases form a finitely generated abelian group.
+
+    For finite-dimensional systems, this should be ℤᵏ for some k.
+    The generators correspond to fundamental frequencies of the dynamics. -/
+axiom peripheral_phases_finitely_generated (L : Lindbladian n) :
+    ∃ (k : ℕ) (gens : Fin k → ℝ), ∀ ω ∈ peripheralPhases L,
+      ∃ coeffs : Fin k → ℤ, ω = ∑ i, (coeffs i : ℝ) * gens i
+
+/-- For ergodic systems, the only phase is 0 (no oscillations). -/
+theorem ergodic_no_oscillations (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L)
+    (hErg : IsErgodic L) :
+    peripheralPhases L ⊆ {0} := by
+  intro ω hω
+  simp only [peripheralPhases, Set.mem_setOf_eq] at hω
+  have hTriv := ergodic_peripheral_trivial L hFaith hErg
+  simp only [peripheralSpectrum] at hω hTriv
+  rw [hTriv] at hω
+  simp only [Set.mem_singleton_iff] at hω
+  simp only [Set.mem_singleton_iff]
+  have h : Complex.I * ω = 0 := hω
+  simp only [mul_eq_zero, Complex.I_ne_zero, false_or] at h
+  exact_mod_cast h
+
 end DefectCRN.Quantum
