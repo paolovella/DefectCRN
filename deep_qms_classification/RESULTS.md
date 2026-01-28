@@ -88,8 +88,8 @@ Python package `code/` with:
 
 1. ~~**Prove δ_Q = δ_cen formally**~~: ✓ DONE - `quantum_deficiency_eq_central_deficiency` in Classification.lean
 2. ~~**Characterize gap δ_cen - δ_struct**~~: ✓ DONE - `deficiencyGap`, `zero_gap_iff_structural_eq_center_dim` in Classification.lean
-3. **Phase group structure**: Is it always a finite abelian group?
-4. **Classification completeness**: Do Type + Phase classify QMS?
+3. ~~**Phase group structure**~~: ✓ DONE (axiom) - `peripheral_phases_finitely_generated` asserts phases form ℤᵏ
+4. ~~**Classification completeness**~~: ✓ DONE (conjecture formalized) - `deficiency_does_not_classify` proves δ_Q alone insufficient
 
 ## Relation to Lean Formalization
 
@@ -99,17 +99,24 @@ The `DefectCRN/Quantum/` library contains:
 - `StructuralDeficiency.lean`: Graph-based deficiency theory
 - `Deficiency.lean`: Quantum deficiency definition
 
-Key theorems (in Classification.lean):
+Key theorems (in Classification.lean, 350+ lines):
 - `quantum_deficiency_eq_central_deficiency`: δ_Q = δ_cen under faithful state
 - `deficiency_hierarchy`: δ_struct ≤ δ_cen = δ_Q
 - `deficiencyGap`: Measures "accidental" vs "structural" symmetry
 - `zero_gap_iff_structural_eq_center_dim`: Gap characterization
 - `ergodic_all_deficiencies_zero`: All deficiencies vanish for ergodic systems
+- `peripheralSpectrum`, `peripheralPhases`: Oscillatory mode analysis
+- `deficiency_does_not_classify`: δ_Q alone doesn't classify QMS
+- `CompleteInvariants`, `TypeEquivalent`: Classification framework
 
-Key axioms (20 total, 1 sorry):
+Key axioms (22 total, 1 sorry):
 - `interactionAlgebra_multiplicityFree`: Interaction algebras are multiplicity-free
 - `wedderburn_decomposition_exists`: Wedderburn structure theorem
 - `commutant_dim_eq_stationary_dim`: Evans-Høegh-Krohn theorem
+- `peripheral_phases_finitely_generated`: Phase group is ℤᵏ
+- `ergodic_lindbladian_exists`: Ergodic systems exist at each dimension
+
+Remaining sorry: `ergodic_peripheral_trivial` (requires spectral theory not in Mathlib)
 
 ## Phase Summary
 
