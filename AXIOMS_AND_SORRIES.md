@@ -2,7 +2,7 @@
 
 ## Summary
 
-- **Axioms**: 23 total
+- **Axioms**: 22 total
 - **Sorries**: 0 total (all eliminated)
 
 ---

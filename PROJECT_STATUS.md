@@ -9,16 +9,16 @@ A Lean 4 formalization of deficiency theory for Chemical Reaction Networks (CRN)
 | Metric | Count |
 |--------|-------|
 | Lean files | 43 |
-| Lines of code | 15,969 |
-| Theorems/Lemmas | 588 |
+| Lines of code | 16,042 |
+| Theorems/Lemmas | 590 |
 | Definitions | 442 |
 | Structures | 46 |
-| Axioms | 23 |
+| Axioms | 22 |
 | Sorries | 0 |
 
 ---
 
-## Axioms (23 total)
+## Axioms (22 total)
 
 ### Lindbladian Evolution (5 axioms)
 
