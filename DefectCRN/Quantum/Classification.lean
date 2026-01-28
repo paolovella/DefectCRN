@@ -271,4 +271,66 @@ theorem ergodic_no_oscillations (L : Lindbladian n)
   simp only [mul_eq_zero, Complex.I_ne_zero, false_or] at h
   exact_mod_cast h
 
+/-! ## Complete Invariants -/
+
+/-- The complete invariant triple for a Lindbladian consists of:
+    1. The Wedderburn type (block structure of A_int)
+    2. The peripheral phases (oscillatory modes)
+    3. The spectral gap (rate of convergence)
+
+    Conjecture: (Type, Phase) classify QMS up to equivalence.
+    The spectral gap is additional dynamical information. -/
+structure CompleteInvariants (n : ℕ) where
+  /-- The Wedderburn type {(d_α, m_α)} of A_int -/
+  wedderburnType : WedderburnType
+  /-- The peripheral phases (generators of the phase group) -/
+  phaseGenerators : List ℝ
+  /-- The spectral gap γ > 0 -/
+  spectralGap : ℝ
+
+/-- Extract complete invariants from a Lindbladian. -/
+noncomputable def extractInvariants (L : Lindbladian n) : CompleteInvariants n :=
+  { wedderburnType := wedderburnType L,
+    phaseGenerators := [], -- Placeholder: would compute from peripheral spectrum
+    spectralGap := 0 }     -- Placeholder: would compute from spectrum
+
+/-- Two Lindbladians are *Type-equivalent* if they have the same Wedderburn type. -/
+def TypeEquivalent (L₁ L₂ : Lindbladian n) : Prop :=
+  wedderburnType L₁ = wedderburnType L₂
+
+/-- Type equivalence implies equal central deficiency. -/
+theorem type_equiv_implies_equal_central_deficiency (L₁ L₂ : Lindbladian n)
+    (hEq : TypeEquivalent L₁ L₂) :
+    centralDeficiency L₁ = centralDeficiency L₂ := by
+  unfold TypeEquivalent at hEq
+  unfold centralDeficiency
+  have h1 := center_dim_eq_wedderburn L₁
+  have h2 := center_dim_eq_wedderburn L₂
+  rw [h1, h2, hEq]
+
+/-- The invariant summary: what we know classifies QMS.
+
+    From computational investigation:
+    1. δ_Q alone does NOT classify (separation examples exist)
+    2. (Type, Phase) appears to classify (conjecture)
+    3. δ_cen is derivable from Type (= #blocks - 1)
+    4. δ_struct ≤ δ_cen always (can be strict)
+
+    The full classification problem remains open. -/
+theorem invariant_summary (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    -- δ_Q is computable from dim(ker L)
+    quantumDeficiency L = Module.finrank ℂ L.stationarySubspace - 1 ∧
+    -- δ_cen is computable from Wedderburn type
+    centralDeficiency L = centerDimFromType (wedderburnType L) - 1 ∧
+    -- They are equal under faithful state
+    quantumDeficiency L = centralDeficiency L := by
+  constructor
+  · rfl
+  constructor
+  · unfold centralDeficiency
+    have h := center_dim_eq_wedderburn L
+    omega
+  · exact quantum_deficiency_eq_central_deficiency L hFaith
+
 end DefectCRN.Quantum
