@@ -25,6 +25,12 @@ texput.log
 # OS files
 .DS_Store
 Thumbs.db
+*:Zone.Identifier
+
+# Python
+venv/
+__pycache__/
+*.pyc
 
 # Temporary files
 *.tmp
