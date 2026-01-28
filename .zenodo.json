@@ -1,0 +1,32 @@
+{
+  "title": "DefectCRN: Formal Verification of Chemical Reaction Network Theory and Quantum Markov Semigroups",
+  "description": "A formally verified Lean 4 library for Chemical Reaction Network Theory (CRNT) and Quantum Markov Semigroups (QMS). Implements the Onsager-Rayleigh variational framework, Feinberg-Horn-Jackson deficiency theorems, and quantum extensions including the universal classification theorem. Zero sorries, 22 axioms, 16,042 lines, 590 theorems.",
+  "creators": [
+    {
+      "name": "Vella, Paolo",
+      "affiliation": "",
+      "orcid": ""
+    }
+  ],
+  "license": "Apache-2.0",
+  "keywords": [
+    "chemical reaction networks",
+    "formal verification",
+    "Lean 4",
+    "Mathlib",
+    "CRNT",
+    "deficiency theory",
+    "quantum Markov semigroups",
+    "Lindbladian",
+    "open quantum systems"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/paolovella/DefectCRN",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ],
+  "upload_type": "software",
+  "access_right": "open"
+}
