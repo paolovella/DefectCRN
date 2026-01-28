@@ -529,7 +529,7 @@ A homogeneous steady state $c^*$ is Turing unstable if it is stable to spatially
 \begin{theorem}[Turing Conditions]
 \label{thm:turing}
 For a two-species system with Jacobian $J$ at $c^*$:
-\begin{enumerate}[label=(\roman*)}
+\begin{enumerate}[label=(\roman*)]
     \item $\tr(J) < 0$ and $\det(J) > 0$ (homogeneous stability),
     \item $D_2 J_{11} + D_1 J_{22} > 0$,
     \item $(D_2 J_{11} + D_1 J_{22})^2 > 4 D_1 D_2 \det(J)$.
@@ -763,10 +763,18 @@ The \emph{multiplicity gap} $\delta_{\mathrm{com}} - \delta_{\mathrm{cen}} = \de
 The \emph{peripheral spectrum} of $\Lap$ is $\{\mu \in \mathrm{Spec}(\Lap^*) : \mathrm{Re}(\mu) = 0\}$. The \emph{peripheral phases} are the imaginary parts $\omega$ such that $i\omega$ is a peripheral eigenvalue.
 \end{definition}
 
-\begin{theorem}[Primitive Peripheral Spectrum]
+\begin{theorem}[Detailed Balance Peripheral Spectrum]
 \label{thm:ergodic-peripheral}
-For primitive systems, the peripheral spectrum is $\{0\}$ (no oscillations). Equivalently: ergodic + trivial peripheral spectrum defines primitivity.
+For systems in $\sigma$-detailed balance, the peripheral spectrum is $\{0\}$ (no oscillations).
 \end{theorem}
+
+\begin{proof}
+Under $\sigma$-detailed balance, the spectrum of $\Lap^*$ is real (all eigenvalues satisfy $\mathrm{Im}(\mu) = 0$). A peripheral eigenvalue has $\mathrm{Re}(\mu) = 0$. Combined: $\mu = 0$.
+\end{proof}
+
+\begin{remark}
+A system is \emph{primitive} if it is ergodic with trivial peripheral spectrum. By Theorem~\ref{thm:ergodic-peripheral}, all ergodic systems in detailed balance are primitive.
+\end{remark}
 
 \begin{theorem}[Phase Group Structure]
 \label{thm:phase-group}
@@ -918,7 +926,7 @@ The entire framework has been formalized in Lean 4:
 \midrule
 Lines of code & 7930 & 7693 \\
 Theorems/Lemmas & 235 & 338 \\
-\texttt{sorry} (unproven) & 0 & 1 \\
+\texttt{sorry} (unproven) & 0 & 0 \\
 Axioms & 0 & 22 \\
 Warnings & 0 & 0 \\
 Files & 28 & 15 \\

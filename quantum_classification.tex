@@ -343,6 +343,19 @@ $\Lap$ is \emph{ergodic} if $\delta_Q = 0$ (equivalently, $\Aint = M_n(\C)$).
 $\Lap$ is \emph{primitive} if it is ergodic and $\mathrm{Periph}(\Lap) = \{0\}$.
 \end{definition}
 
+\begin{theorem}[Detailed Balance Implies Trivial Peripheral Spectrum]
+\label{thm:db-peripheral}
+If $\Lap$ satisfies $\sigma$-detailed balance, then $\mathrm{Periph}(\Lap) = \{0\}$.
+\end{theorem}
+
+\begin{proof}
+Under detailed balance, all eigenvalues of $\Lap^*$ are real. A peripheral eigenvalue has $\mathrm{Re}(\mu) = 0$, so $\mu = 0$.
+\end{proof}
+
+\begin{corollary}
+Every ergodic system in detailed balance is primitive.
+\end{corollary}
+
 \begin{theorem}[Primitive Convergence]
 If $\Lap$ is primitive, there exists a unique faithful stationary state $\rho^*$ that is globally attracting: $e^{t\Lap}(\rho) \to \rho^*$ for all initial $\rho$.
 \end{theorem}
@@ -582,6 +595,7 @@ The main theorems are formalized in Lean 4 using Mathlib.
 Universal (Thm~\ref{thm:universal}) & \texttt{quantum\_deficiency\_eq\_commutant\_deficiency} \\
 Multiplicity-Free (Thm~\ref{thm:mf}) & \texttt{quantum\_deficiency\_eq\_central\_iff\_multiplicityFree} \\
 Hierarchy (Thm~\ref{thm:hierarchy}) & \texttt{deficiency\_hierarchy} \\
+DB Peripheral (Thm~\ref{thm:db-peripheral}) & \texttt{ergodic\_peripheral\_trivial} \\
 Phase Group & \texttt{peripheral\_phases\_finitely\_generated} \\
 \bottomrule
 \end{tabular}

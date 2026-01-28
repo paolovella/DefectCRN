@@ -466,10 +466,58 @@ theorem duality_relation [DecidableEq (Fin n)] (A ρ : Matrix (Fin n) (Fin n) �
 
   rw [h_unitary, h_dissipator]
 
+/-- L*(I) = 0 (dual of trace preservation).
+
+    By trace preservation: Tr(L(ρ)) = 0 for all ρ.
+    By duality: Tr(L*(I) * ρ) = Tr(I * L(ρ)) = Tr(L(ρ)) = 0 for all ρ.
+    Since this holds for all ρ, L*(I) = 0. -/
+theorem dual_preserves_identity [DecidableEq (Fin n)] :
+    L.dualApply 1 = 0 := by
+  -- Direct computation: [H, I] = 0 and each dual dissipator term on I gives 0
+  simp only [dualApply, commutator, Matrix.mul_one, Matrix.one_mul, sub_self, smul_zero,
+    zero_add]
+  -- foldl (fun acc Lk => acc + singleDualDissipator Lk 1) 0 = 0
+  -- since singleDualDissipator Lk 1 = 0 for each Lk
+  have h : ∀ Lk : Matrix (Fin n) (Fin n) ℂ, singleDualDissipator Lk 1 = 0 := by
+    intro Lk
+    simp only [singleDualDissipator, Matrix.one_mul, Matrix.mul_one, anticommutator]
+    -- Goal: Lk† * Lk - (1/2) • (Lk† * Lk + Lk† * Lk) = 0
+    -- = Lk† * Lk - (1/2) • (2 * Lk† * Lk) = Lk† * Lk - Lk† * Lk = 0
+    rw [show Lk† * Lk + Lk† * Lk = (2 : ℂ) • (Lk† * Lk) by simp [two_smul]]
+    simp only [smul_smul]
+    norm_num
+  induction L.jumpOps with
+  | nil => simp
+  | cons Lk rest ih =>
+    simp only [List.foldl_cons]
+    rw [h Lk, add_zero]
+    exact ih
+
 /-- The spectrum of the dual Lindbladian (for spectral analysis).
     This consists of eigenvalues of L* viewed as a linear map on M_n(ℂ). -/
 noncomputable def dualSpectrum : Set ℂ :=
   {μ : ℂ | ∃ A : Matrix (Fin n) (Fin n) ℂ, A ≠ 0 ∧ L.dualApply A = μ • A}
+
+/-- Zero is always in the dual spectrum.
+
+    The identity matrix I is a (right) eigenvector with eigenvalue 0:
+    L*(I) = 0 because L preserves trace: Tr(L(ρ)) = 0 for all ρ
+    implies Tr(ρ · L*(I)) = 0 for all ρ, so L*(I) = 0.
+
+    Note: In finite dimensions, 0 ∈ dualSpectrum is equivalent to
+    the existence of stationary states (ker L ≠ {0}). -/
+theorem zero_mem_dualSpectrum : (0 : ℂ) ∈ L.dualSpectrum := by
+  simp only [dualSpectrum, Set.mem_setOf_eq]
+  use 1  -- Identity matrix
+  constructor
+  · -- 1 ≠ 0
+    intro h
+    have : (1 : Matrix (Fin n) (Fin n) ℂ) 0 0 = 0 := by rw [h]; rfl
+    simp at this
+  · -- L*(I) = 0 · I = 0
+    simp only [zero_smul]
+    -- L*(I) = 0 by trace preservation
+    apply L.dual_preserves_identity
 
 /-! ## Time Evolution -/
 

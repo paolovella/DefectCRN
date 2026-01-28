@@ -6,6 +6,7 @@ Authors: Paolo Vella
 import DefectCRN.Quantum.InteractionAlgebra
 import DefectCRN.Quantum.Deficiency
 import DefectCRN.Quantum.StructuralDeficiency
+import DefectCRN.Quantum.DetailedBalance
 
 /-!
 # The Main Classification Theorem: δ_Q = δ_com
@@ -107,6 +108,7 @@ theorem quantum_deficiency_eq_central_iff_multiplicityFree (L : Lindbladian n)
   rw [hStatComm]
   -- Now need: centerDimension L - 1 = finrank (interactionCommutantSubmodule L) - 1 ↔ MF
   have hPos := centerDimension_pos L
+  have hLe := center_dim_le_commutant_dim L  -- commutant ≥ center ≥ 1
   constructor
   · intro h
     have hDimEq : centerDimension L = Module.finrank ℂ (interactionCommutantSubmodule L) := by omega
@@ -131,11 +133,11 @@ theorem central_deficiency_le_quantum_deficiency (L : Lindbladian n)
   rw [quantum_deficiency_eq_commutant_deficiency L hFaith]
   exact central_deficiency_le_commutant_deficiency L
 
-/-- Corollary: δ_cen = 0 implies δ_Q = 0 (but not conversely in general). -/
-theorem central_deficiency_zero_implies_quantum_deficiency_zero (L : Lindbladian n)
+/-- Corollary: δ_Q = 0 implies δ_cen = 0 (ergodic ⟹ trivial center). -/
+theorem quantum_deficiency_zero_implies_central_deficiency_zero (L : Lindbladian n)
     (hFaith : HasFaithfulStationaryState L)
-    (hCen : centralDeficiency L = 0) :
-    quantumDeficiency L = 0 := by
+    (hQ : quantumDeficiency L = 0) :
+    centralDeficiency L = 0 := by
   have h := central_deficiency_le_quantum_deficiency L hFaith
   omega
 
@@ -418,16 +420,36 @@ theorem deficiency_does_not_classify :
 def peripheralSpectrum (L : Lindbladian n) : Set ℂ :=
   {μ ∈ L.dualSpectrum | μ.re = 0}
 
-/-- For ergodic systems, the peripheral spectrum consists only of 0.
-    This is because dim(ker L) = 1, so 0 has multiplicity 1 and
-    all other eigenvalues have negative real part. -/
+/-- For systems in detailed balance, the peripheral spectrum consists only of 0.
+
+    Under σ-detailed balance, the spectrum is real (qdb_real_spectrum), so
+    any peripheral eigenvalue (Re = 0) must have Im = 0, hence equals 0.
+
+    Note: Without detailed balance, ergodic systems can have nontrivial
+    peripheral spectrum (limit cycles). The general ergodic case requires
+    deeper spectral theory not yet in Mathlib. -/
 theorem ergodic_peripheral_trivial (L : Lindbladian n)
-    (hFaith : HasFaithfulStationaryState L)
-    (hErg : IsErgodic L) :
+    (σ : Matrix (Fin n) (Fin n) ℂ)
+    (hQDB : SatisfiesQDB L σ) :
     peripheralSpectrum L = {0} := by
-  -- Ergodic means unique stationary state, so dim(ker L*) = 1
-  -- All other eigenvalues have Re < 0 (Perron-Frobenius type result)
-  sorry -- Requires spectral theory not yet in Mathlib
+  ext μ
+  simp only [peripheralSpectrum, Set.mem_setOf_eq, Set.mem_singleton_iff]
+  constructor
+  · intro ⟨hSpec, hRe⟩
+    -- By qdb_real_spectrum, μ.im = 0
+    have hReal := qdb_real_spectrum L σ hQDB μ hSpec
+    -- So μ = μ.re + i * 0 = μ.re
+    -- But hRe says μ.re = 0
+    apply Complex.ext
+    · exact hRe
+    · exact hReal.1
+  · intro hμ
+    rw [hμ]
+    constructor
+    · -- 0 is always in the spectrum (stationary state)
+      exact L.zero_mem_dualSpectrum
+    · -- Re(0) = 0
+      simp
 
 /-- The phases of the peripheral spectrum form an additive group.
     This is because if μ, ν are peripheral eigenvalues, so is μ + ν
@@ -443,14 +465,17 @@ axiom peripheral_phases_finitely_generated (L : Lindbladian n) :
     ∃ (k : ℕ) (gens : Fin k → ℝ), ∀ ω ∈ peripheralPhases L,
       ∃ coeffs : Fin k → ℤ, ω = ∑ i, (coeffs i : ℝ) * gens i
 
-/-- For ergodic systems, the only phase is 0 (no oscillations). -/
-theorem ergodic_no_oscillations (L : Lindbladian n)
-    (hFaith : HasFaithfulStationaryState L)
-    (hErg : IsErgodic L) :
+/-- For systems in detailed balance, the only phase is 0 (no oscillations).
+
+    Under detailed balance, the spectrum is real, so there are no nonzero
+    imaginary eigenvalues, hence no nontrivial phases. -/
+theorem detailed_balance_no_oscillations (L : Lindbladian n)
+    (σ : Matrix (Fin n) (Fin n) ℂ)
+    (hQDB : SatisfiesQDB L σ) :
     peripheralPhases L ⊆ {0} := by
   intro ω hω
   simp only [peripheralPhases, Set.mem_setOf_eq] at hω
-  have hTriv := ergodic_peripheral_trivial L hFaith hErg
+  have hTriv := ergodic_peripheral_trivial L σ hQDB
   simp only [peripheralSpectrum] at hω hTriv
   rw [hTriv] at hω
   simp only [Set.mem_singleton_iff] at hω
