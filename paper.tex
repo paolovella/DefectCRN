@@ -69,7 +69,7 @@
 \begin{abstract}
 We present a comprehensive, formally verified framework for chemical reaction network theory (CRNT). Starting from the Onsager--Rayleigh dissipation principle, we develop the variational characterization of steady-state fluxes via the functional $\OR(J) = \frac{1}{2}\inner{J}{J}_{W^{-1}} - \inner{\omega}{J}$. We systematically extend to: the deficiency zero and one theorems; higher deficiency networks ($\delta \geq 2$) via the Deficiency-Two Algorithm and Species-Reaction graphs; \textbf{cohomological deficiency theory} establishing $\delta = \dim(H^1)$ for the CRN chain complex; multistability and bifurcation theory; oscillations via Hopf bifurcation and the Routh--Hurwitz criterion; reaction-diffusion systems with Turing pattern formation; stochastic CRNs via the Chemical Master Equation; feedback control theory including antithetic integral control; and \textbf{quantum chemical reaction network theory} extending the classical deficiency zero theorem to open quantum systems via Lindblad dynamics.
 
-The classical framework---comprising \textbf{7930 lines} of Lean 4 code with \textbf{255 theorems} and \textbf{zero axioms}---has been formally verified using the Mathlib library. The quantum extension adds \textbf{7477 lines} with \textbf{329 theorems} and \textbf{20 well-documented axioms}, including the \textbf{main classification theorem} $\delta_Q = \delta_{\mathrm{cen}}$ connecting dynamical and algebraic invariants under faithful stationary states. We demonstrate the theory on examples ranging from the simple $n$-cycle to the complete TCA (Krebs) cycle with 16 species and 10 reactions. This constitutes the first machine-checked formalization of comprehensive chemical reaction network theory, including its quantum generalization.
+\textbf{This constitutes the first machine-checked formalization of comprehensive chemical reaction network theory, including its quantum generalization.} The classical framework---comprising \textbf{7930 lines} of Lean 4 code with \textbf{255 theorems} and \textbf{zero axioms}---has been formally verified using the Mathlib library. The quantum extension adds \textbf{7680 lines} with \textbf{339 theorems} and \textbf{22 well-documented axioms}, including the \textbf{main classification theorem} $\delta_Q = \delta_{\mathrm{cen}}$ connecting dynamical and algebraic invariants under faithful stationary states. We demonstrate the theory on examples ranging from the simple $n$-cycle to the complete TCA (Krebs) cycle with 16 species and 10 reactions.
 \end{abstract}
 
 \tableofcontents
@@ -93,7 +93,7 @@ This paper presents a \emph{comprehensive} and \emph{formally verified} treatmen
     \item Quantum CRNT (Lindblad dynamics, quantum deficiency zero theorem)
 \end{itemize}
 
-By ``formally verified,'' we mean that every definition, theorem, and proof has been machine-checked in the Lean 4 proof assistant, yielding 15,610 total lines of code with 594 theorems across 43 files. The classical CRNT portion is fully axiom-free; the quantum extension uses 20 well-documented axioms for deep results requiring additional Mathlib infrastructure (Wedderburn structure, Evans--H\o egh-Krohn theorem, spectral analysis).
+By ``formally verified,'' we mean that every definition, theorem, and proof has been machine-checked in the Lean 4 proof assistant, yielding \textbf{15,623 total lines} of code with \textbf{573 theorems} across 43 files. The classical CRNT portion is fully axiom-free; the quantum extension uses 20 well-documented axioms for deep results requiring additional Mathlib infrastructure (Wedderburn structure, Evans--H\o egh-Krohn theorem, spectral analysis).
 
 \subsection{Main Contributions}
 
@@ -883,19 +883,19 @@ The entire framework has been formalized in Lean 4:
 \toprule
 \textbf{Metric} & \textbf{Classical} & \textbf{Quantum} \\
 \midrule
-Lines of code & 7930 & 7477 \\
-Theorems/Lemmas & 255 & 329 \\
-\texttt{sorry} (unproven) & 0 & 0 \\
-Axioms & 0 & 20 \\
+Lines of code & 7930 & 7693 \\
+Theorems/Lemmas & 235 & 338 \\
+\texttt{sorry} (unproven) & 0 & 1 \\
+Axioms & 0 & 22 \\
 Warnings & 0 & 0 \\
 Files & 28 & 15 \\
 \midrule
-\textbf{Total} & \multicolumn{2}{r}{\textbf{15,407 lines, 584 theorems, 43 files}} \\
+\textbf{Total} & \multicolumn{2}{r}{\textbf{15,623 lines, 573 theorems, 43 files}} \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-The quantum axioms (20 total) represent deep results requiring Mathlib infrastructure:
+The quantum axioms (22 total) represent deep results requiring Mathlib infrastructure:
 \begin{enumerate}
     \item \texttt{exists\_stationary\_state}: Brouwer fixed point theorem
     \item \texttt{kernel\_projection\_mem\_commutant}: Block matrix decomposition theory
@@ -905,17 +905,22 @@ The quantum axioms (20 total) represent deep results requiring Mathlib infrastru
     \item \texttt{interactionAlgebra\_multiplicityFree}: Representation theory (multiplicity-free)
     \item \texttt{wedderburn\_decomposition\_exists}: Wedderburn--Artin structure theorem
     \item \texttt{structuralCommutant\_le\_commutant}: Graph-algebra correspondence
+    \item \texttt{peripheral\_phases\_finitely\_generated}: Phase group structure
+    \item \texttt{ergodic\_lindbladian\_exists}: Existence of ergodic systems
 \end{enumerate}
+
+\noindent\textbf{Axiom elimination roadmap:} As Mathlib develops, several axioms are likely to become theorems: (1)~\texttt{exists\_stationary\_state} once Brouwer's fixed point theorem is available; (2)~\texttt{quantumSemigroup} when matrix exponential infrastructure is complete; (3)~\texttt{wedderburn\_decomposition\_exists} when finite-dimensional C*-algebra theory is formalized. The remaining axioms encode deep results from quantum dynamical semigroup theory that may require substantial new Mathlib development.
 
 This provides: (1) correctness guarantees, (2) explicit assumptions, (3) reproducibility via \texttt{lake build}, (4) foundation for extensions.
 
 \subsection{Future Work}
 
 \begin{enumerate}
-    \item \textbf{Quantum axiom elimination}: Convert the 5 quantum axioms to theorems as Mathlib gains:
+    \item \textbf{Quantum axiom elimination}: Convert axioms to theorems as Mathlib gains:
     \begin{itemize}
         \item Brouwer fixed point theorem (for \texttt{exists\_stationary\_state})
         \item Matrix exponential infrastructure (for \texttt{quantumSemigroup})
+        \item Wedderburn--Artin structure theorem (for \texttt{wedderburn\_decomposition\_exists})
         \item Spectral theory for non-normal operators (for \texttt{convergence\_to\_stationary})
     \end{itemize}
     \item \textbf{Hybrid systems}: Discrete-continuous CRNs
@@ -1120,7 +1125,7 @@ lake build
 \texttt{Quantum/DetailedBalance.lean} & Detailed balance, GNS & 216 & 8 \\
 \texttt{Quantum/Examples/*.lean} & Two-level, collective dephasing & 580 & 12 \\
 \midrule
-\textbf{Total} & & \textbf{15,610} & \textbf{594} \\
+\textbf{Total} & & \textbf{15,623} & \textbf{573} \\
 \bottomrule
 \end{tabular}
 \caption{Formalization statistics. Version 8.0.0.}
