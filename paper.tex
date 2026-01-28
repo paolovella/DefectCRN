@@ -31,6 +31,7 @@
 
 \theoremstyle{remark}
 \newtheorem{remark}[theorem]{Remark}
+\newtheorem{conjecture}[theorem]{Conjecture}
 
 % ============================================================================
 % MACROS
@@ -92,7 +93,7 @@ This paper presents a \emph{comprehensive} and \emph{formally verified} treatmen
     \item Quantum CRNT (Lindblad dynamics, quantum deficiency zero theorem)
 \end{itemize}
 
-By ``formally verified,'' we mean that every definition, theorem, and proof has been machine-checked in the Lean 4 proof assistant, yielding 15,407 total lines of code with 584 theorems across 43 files. The classical CRNT portion is fully axiom-free; the quantum extension uses 20 well-documented axioms for deep results requiring additional Mathlib infrastructure (Wedderburn structure, Evans--H\o egh-Krohn theorem, spectral analysis).
+By ``formally verified,'' we mean that every definition, theorem, and proof has been machine-checked in the Lean 4 proof assistant, yielding 15,610 total lines of code with 594 theorems across 43 files. The classical CRNT portion is fully axiom-free; the quantum extension uses 20 well-documented axioms for deep results requiring additional Mathlib infrastructure (Wedderburn structure, Evans--H\o egh-Krohn theorem, spectral analysis).
 
 \subsection{Main Contributions}
 
@@ -720,6 +721,50 @@ Under appropriate conditions (faithful state, non-degenerate graph, support):
 where $\delta_{\mathrm{struct}}$ is the structural deficiency from the quantum network graph.
 \end{theorem}
 
+\begin{definition}[Deficiency Gap]
+The \emph{deficiency gap} $\delta_{\mathrm{cen}} - \delta_{\mathrm{struct}}$ measures ``accidental'' symmetry---block structure in the interaction algebra not visible from the graph alone.
+\end{definition}
+
+\begin{theorem}[Gap Characterization]
+\label{thm:gap}
+The gap is zero iff $\delta_{\mathrm{struct}} = \delta_{\mathrm{cen}}$, which occurs when the graph perfectly captures the algebra's block structure. A positive gap indicates hidden symmetry.
+\end{theorem}
+
+\subsection{Peripheral Spectrum}
+
+\begin{definition}[Peripheral Spectrum]
+The \emph{peripheral spectrum} of $\Lap$ is $\{\mu \in \mathrm{Spec}(\Lap^*) : \mathrm{Re}(\mu) = 0\}$. The \emph{peripheral phases} are the imaginary parts $\omega$ such that $i\omega$ is a peripheral eigenvalue.
+\end{definition}
+
+\begin{theorem}[Ergodic Peripheral Spectrum]
+\label{thm:ergodic-peripheral}
+For ergodic systems ($\delta_Q = 0$), the peripheral spectrum is $\{0\}$ (no oscillations).
+\end{theorem}
+
+\begin{conjecture}[Phase Group Structure]
+The peripheral phases form a finitely generated abelian group $\mathbb{Z}^k$ for some $k \geq 0$. The generators correspond to fundamental frequencies of the dynamics.
+\end{conjecture}
+
+\subsection{Classification Conjecture}
+
+\begin{conjecture}[Complete Classification]
+Two Lindbladians $\Lap_1, \Lap_2$ with faithful stationary states are equivalent iff:
+\begin{enumerate}[label=(\roman*)]
+    \item $\mathrm{Type}(\Lap_1) = \mathrm{Type}(\Lap_2)$: Same Wedderburn signature $\{(d_\alpha, m_\alpha)\}$
+    \item $\mathrm{Phase}(\Lap_1) \cong \mathrm{Phase}(\Lap_2)$: Isomorphic peripheral phase groups
+\end{enumerate}
+Note: $\delta_{\mathrm{cen}}$ is redundant (equals number of Wedderburn blocks minus 1).
+\end{conjecture}
+
+\begin{theorem}[Deficiency Does Not Classify]
+\label{thm:separation}
+The quantum deficiency $\delta_Q$ alone does not classify QMS. Separation examples exist:
+\begin{itemize}
+    \item Same $\delta_Q = 0$: $M_2(\mathbb{C})$ vs $M_3(\mathbb{C})$ (different dimensions)
+    \item Same $\delta_Q = 1$: $\mathbb{C}^2$ vs $M_2 \oplus M_2$ (different block structure)
+\end{itemize}
+\end{theorem}
+
 \subsection{Quantum Deficiency Zero Theorem}
 
 \begin{theorem}[Quantum Deficiency Zero Theorem]
@@ -1071,11 +1116,11 @@ lake build
 \texttt{Quantum/QuantumDZT.lean} & Quantum DZT main result & 83 & 4 \\
 \texttt{Quantum/InteractionAlgebra.lean} & Interaction algebra, Wedderburn & 712 & 28 \\
 \texttt{Quantum/StructuralDeficiency.lean} & Graph deficiency $\delta_{\mathrm{struct}}$ & 1578 & 52 \\
-\texttt{Quantum/Classification.lean} & Main theorem $\delta_Q = \delta_{\mathrm{cen}}$ & 133 & 6 \\
+\texttt{Quantum/Classification.lean} & Main theorem $\delta_Q = \delta_{\mathrm{cen}}$ & 336 & 15 \\
 \texttt{Quantum/DetailedBalance.lean} & Detailed balance, GNS & 216 & 8 \\
 \texttt{Quantum/Examples/*.lean} & Two-level, collective dephasing & 580 & 12 \\
 \midrule
-\textbf{Total} & & \textbf{15,407} & \textbf{584} \\
+\textbf{Total} & & \textbf{15,610} & \textbf{594} \\
 \bottomrule
 \end{tabular}
 \caption{Formalization statistics. Version 8.0.0.}
@@ -1114,9 +1159,15 @@ Thm.~\ref{thm:rpa} & \texttt{antithetic\_rpa} & Control.lean \\
 \midrule
 Thm.~\ref{thm:classification} & \texttt{quantum\_deficiency\_eq\_central\_deficiency} & Quantum/Classification.lean \\
 Thm.~\ref{thm:hierarchy} & \texttt{deficiency\_hierarchy} & Quantum/Classification.lean \\
+Thm.~\ref{thm:gap} & \texttt{zero\_gap\_iff\_structural\_eq\_center\_dim} & Quantum/Classification.lean \\
+Thm.~\ref{thm:ergodic-peripheral} & \texttt{ergodic\_peripheral\_trivial} & Quantum/Classification.lean \\
+Thm.~\ref{thm:separation} & \texttt{deficiency\_does\_not\_classify} & Quantum/Classification.lean \\
 Thm.~\ref{thm:frigerio} & \texttt{frigerio\_uniqueness} & Quantum/Frigerio.lean \\
 Thm.~\ref{thm:quantum-dzt} & \texttt{quantum\_deficiency\_zero\_theorem} & Quantum/QuantumDZT.lean \\
 Lem.~\ref{lem:kernel-proj} & \texttt{kernel\_projection\_mem\_commutant} & Quantum/Irreducibility.lean \\
+--- & \texttt{deficiencyGap} & Quantum/Classification.lean \\
+--- & \texttt{peripheralSpectrum} & Quantum/Classification.lean \\
+--- & \texttt{CompleteInvariants} & Quantum/Classification.lean \\
 --- & \texttt{stationary\_dim\_eq\_center\_dim} & Quantum/InteractionAlgebra.lean \\
 --- & \texttt{center\_dim\_eq\_commutant\_dim} & Quantum/InteractionAlgebra.lean \\
 --- & \texttt{structuralCommutant\_le\_commutant} & Quantum/StructuralDeficiency.lean \\
