@@ -534,6 +534,10 @@ structure WedderburnType where
   blocks : List (ℕ × ℕ)  -- List of (d_α, m_α) pairs
   deriving DecidableEq
 
+/-- A Wedderburn type is valid if all dimensions and multiplicities are positive -/
+def WedderburnType.IsValid (w : WedderburnType) : Prop :=
+  ∀ dm ∈ w.blocks, dm.1 ≥ 1 ∧ dm.2 ≥ 1
+
 /-- The total commutant dimension from Wedderburn type: Σ_α m_α² -/
 def commutantDimFromType (w : WedderburnType) : ℕ :=
   w.blocks.foldl (fun acc ⟨_, m⟩ => acc + m * m) 0
@@ -557,6 +561,8 @@ def centerDimFromType (w : WedderburnType) : ℕ :=
 structure WedderburnDecomposition (A : Subalgebra ℂ (Matrix (Fin n) (Fin n) ℂ)) where
   /-- The Wedderburn type signature -/
   wtype : WedderburnType
+  /-- The type is valid (all dimensions and multiplicities ≥ 1) -/
+  valid : wtype.IsValid
   /-- Center dimension equals number of blocks -/
   center_dim : ∀ (centerSub : Submodule ℂ (Matrix (Fin n) (Fin n) ℂ)),
     (∀ X, X ∈ centerSub ↔ X ∈ A ∧ ∀ Y ∈ A, ⟦X, Y⟧ = 0) →
@@ -583,6 +589,10 @@ axiom wedderburn_decomposition_exists (L : Lindbladian n) :
 /-- The Wedderburn type of the interaction algebra -/
 noncomputable def wedderburnType (L : Lindbladian n) : WedderburnType :=
   (wedderburn_decomposition_exists L).wtype
+
+/-- The Wedderburn type of any Lindbladian is valid -/
+theorem wedderburnType_valid (L : Lindbladian n) : (wedderburnType L).IsValid :=
+  (wedderburn_decomposition_exists L).valid
 
 /-- Wedderburn type determines center dimension -/
 theorem center_dim_eq_wedderburn (L : Lindbladian n) :
@@ -672,6 +682,69 @@ theorem multiplicityFree_commutant_eq_center (w : WedderburnType)
   unfold commutantDimFromType centerDimFromType
   exact foldl_mul_eq_length w.blocks hMF
 
+/-- Key arithmetic lemma: Σ m² ≥ length when all m ≥ 1 -/
+private theorem sum_sq_ge_length (blocks : List (ℕ × ℕ))
+    (hPos : ∀ dm ∈ blocks, dm.2 ≥ 1) :
+    blocks.foldl (fun acc ⟨_, m⟩ => acc + m * m) 0 ≥ blocks.length := by
+  induction blocks with
+  | nil => simp
+  | cons dm rest ih =>
+    simp only [List.foldl_cons, List.length_cons, Nat.zero_add]
+    have hm : dm.2 ≥ 1 := hPos dm (List.mem_cons_self dm rest)
+    have hrest : ∀ dm' ∈ rest, dm'.2 ≥ 1 :=
+      fun dm' hdm' => hPos dm' (List.mem_cons_of_mem dm hdm')
+    have ihrest := ih hrest
+    rw [foldl_add_acc]
+    have hsq : dm.2 * dm.2 ≥ 1 := by
+      calc dm.2 * dm.2 ≥ 1 * 1 := Nat.mul_le_mul hm hm
+        _ = 1 := by ring
+    calc dm.2 * dm.2 + rest.foldl (fun acc ⟨_, m⟩ => acc + m * m) 0
+        ≥ 1 + rest.length := Nat.add_le_add hsq ihrest
+      _ = rest.length + 1 := Nat.add_comm _ _
+
+/-- Helper: m² = 1 with m ≥ 1 implies m = 1 -/
+private theorem sq_eq_one_of_pos {m : ℕ} (hpos : m ≥ 1) (hsq : m * m = 1) : m = 1 := by
+  -- m ≥ 1, so m = 1 or m ≥ 2
+  -- If m ≥ 2, then m² ≥ 4 > 1, contradiction
+  -- So m = 1
+  match m with
+  | 0 => omega  -- contradicts hpos
+  | 1 => rfl
+  | n + 2 =>
+    -- m = n + 2 ≥ 2, so m * m ≥ 4
+    simp only [Nat.add_mul, Nat.mul_add] at hsq
+    omega
+
+/-- If length = Σ m² and all m ≥ 1, then all m = 1 -/
+private theorem length_eq_sum_sq_imp_all_one (blocks : List (ℕ × ℕ))
+    (hPos : ∀ dm ∈ blocks, dm.2 ≥ 1)
+    (hEq : blocks.length = blocks.foldl (fun acc ⟨_, m⟩ => acc + m * m) 0) :
+    ∀ dm ∈ blocks, dm.2 = 1 := by
+  induction blocks with
+  | nil => simp
+  | cons dm rest ih =>
+    intro dm' hdm'
+    simp only [List.foldl_cons, List.length_cons, Nat.zero_add] at hEq
+    have hm : dm.2 ≥ 1 := hPos dm (List.mem_cons_self dm rest)
+    have hrest_pos : ∀ dm'' ∈ rest, dm''.2 ≥ 1 :=
+      fun dm'' hdm'' => hPos dm'' (List.mem_cons_of_mem dm hdm'')
+    rw [foldl_add_acc] at hEq
+    -- Let S = sum of m² over rest
+    set S := rest.foldl (fun acc ⟨_, m⟩ => acc + m * m) 0 with hS_def
+    -- We have: 1 + rest.length = dm.2² + S
+    -- Key bounds:
+    have hge : S ≥ rest.length := sum_sq_ge_length rest hrest_pos
+    have hsq_ge : dm.2 * dm.2 ≥ 1 := Nat.mul_le_mul hm hm
+    -- From hEq: 1 + rest.length = dm.2² + S
+    -- Combined with hsq_ge ≥ 1 and hge ≥ rest.length:
+    -- 1 + rest.length = dm.2² + S ≥ 1 + rest.length
+    -- So equality throughout: dm.2² = 1 and S = rest.length
+    have h1 : dm.2 * dm.2 = 1 := by omega
+    have h2 : rest.length = S := by omega
+    cases hdm' with
+    | head => exact sq_eq_one_of_pos hm h1
+    | tail _ hmem => exact ih hrest_pos h2 dm' hmem
+
 /-- Center dimension is always ≤ commutant dimension.
 
     This follows from center ⊆ commutant and the Wedderburn structure:
@@ -734,9 +807,11 @@ theorem center_dim_eq_commutant_dim_iff_multiplicityFree (L : Lindbladian n) :
     -- This is because Σ m_α² ≥ Σ 1 = #blocks, with equality iff all m_α = 1
     unfold centerDimFromType commutantDimFromType at hEq
     unfold WedderburnType.isMultiplicityFree
-    -- We prove by induction that if length = foldl (λ acc (d,m) → acc + m²) 0
-    -- then all m = 1
-    sorry -- Requires arithmetic lemma about m_α
+    -- Use the validity of the Wedderburn type and the arithmetic lemma
+    have hValid := wedderburnType_valid L
+    have hPos : ∀ dm ∈ (wedderburnType L).blocks, dm.2 ≥ 1 :=
+      fun dm hdm => (hValid dm hdm).2
+    exact length_eq_sum_sq_imp_all_one (wedderburnType L).blocks hPos hEq
   · -- multiplicity-free → center = commutant
     intro hMF
     exact (multiplicityFree_commutant_eq_center _ hMF).symm

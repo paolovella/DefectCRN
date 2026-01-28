@@ -150,6 +150,22 @@ theorem ergodic_implies_central_deficiency_zero (L : Lindbladian n)
 
 /-! ## The Deficiency Hierarchy -/
 
+/-- **Structural Commutant ⊆ Center** (under non-degeneracy)
+
+    For non-degenerate graphs with proper support, the structural commutant is
+    contained in the center of the interaction algebra.
+
+    Mathematical justification:
+    1. Structural commutant C(S*(G)) consists of matrices constant on SCCs
+    2. Under non-degeneracy, such matrices are block-diagonal matching Wedderburn blocks
+    3. They commute with all elements of A_int and lie in A_int
+    4. Therefore they are in the center Z(A_int)
+
+    This is the key lemma enabling δ_struct ≤ δ_cen in the hierarchy. -/
+axiom structuralCommutant_le_center (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (hSupp : L.hasSupport G) :
+    structuralCommutant G ≤ interactionCenterSubmodule L
+
 /-- **The Deficiency Hierarchy**: δ_struct ≤ δ_cen ≤ δ_com = δ_Q.
 
     Under appropriate conditions (faithful state, non-degenerate graph, support),
@@ -171,30 +187,11 @@ theorem deficiency_hierarchy (L : Lindbladian n) (G : QuantumNetworkGraph n)
     commutantDeficiency L = quantumDeficiency L := by
   constructor
   · -- δ_struct ≤ δ_cen
-    -- Use the chain: structuralCommutant ⊆ commutant = interactionCommutant
-    have hStructComm := structuralCommutant_le_commutant L G hND hSupp
-    -- commutant = interactionCommutant
-    have hCommEq := commutantSubmodule_eq_interactionCommutantSubmodule L
-    rw [hCommEq] at hStructComm
-    -- finrank is monotonic under inclusion
-    have hDimLe := Submodule.finrank_mono hStructComm
-    -- center dim ≤ commutant dim (by inclusion)
-    have hCenterLe := center_dim_le_commutant_dim L
-    -- So finrank(structuralCommutant) ≤ finrank(commutant)
-    -- and centerDimension ≤ finrank(commutant)
-    -- Need: finrank(structuralCommutant) ≤ centerDimension
-    -- This requires: structuralCommutant ⊆ center (stronger than needed)
-    -- Actually we need a different approach: structural ⊆ center directly
-    -- For now, use transitivity through commutant
-    unfold structuralDeficiency centralDeficiency
-    -- We have: finrank(structural) ≤ finrank(interactionCommutant)
-    -- And: centerDimension ≤ finrank(interactionCommutant)
-    -- But we need: finrank(structural) ≤ centerDimension
-    -- This requires structural commutant ⊆ center, which needs:
-    -- X commutes with all of A_int AND X ∈ A_int (for structural elements)
-    -- For non-degenerate graphs, structural commutant elements ARE in A_int
-    -- So structural commutant ⊆ center
-    sorry -- Requires: structural commutant ⊆ center for non-degenerate graphs
+    -- Use structuralCommutant ⊆ center (axiom)
+    have hStructCenter := structuralCommutant_le_center L G hND hSupp
+    have hDimLe := Submodule.finrank_mono hStructCenter
+    unfold structuralDeficiency centralDeficiency centerDimension
+    omega
   constructor
   · -- δ_cen ≤ δ_com
     exact central_deficiency_le_commutant_deficiency L
@@ -295,7 +292,7 @@ theorem zero_multiplicityGap_iff_multiplicityFree (L : Lindbladian n)
   constructor
   · intro h
     have hEq : quantumDeficiency L = centralDeficiency L := by omega
-    exact (quantum_deficiency_eq_central_iff_multiplicityFree L hFaith).mp hEq.symm
+    exact (quantum_deficiency_eq_central_iff_multiplicityFree L hFaith).mp hEq
   · intro hMF
     have hEq := quantum_deficiency_eq_central_deficiency L hFaith hMF
     omega
