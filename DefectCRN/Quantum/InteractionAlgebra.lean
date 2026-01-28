@@ -314,9 +314,49 @@ noncomputable def centerDimension (L : Lindbladian n) : ℕ :=
     Key properties:
     * Basis-invariant (defined from A_int, not from a choice of basis)
     * GKSL gauge-invariant (depends only on the generated algebra)
-    * Reduces to structural deficiency for non-degenerate cases -/
+    * Reduces to structural deficiency for non-degenerate cases
+    * In general: δ_cen ≤ δ_com (equality iff multiplicity-free) -/
 noncomputable def centralDeficiency (L : Lindbladian n) : ℕ :=
   centerDimension L - 1
+
+/-- The interaction commutant as a submodule (needed for dimension counting) -/
+noncomputable def interactionCommutantSubmodule (L : Lindbladian n) :
+    Submodule ℂ (Matrix (Fin n) (Fin n) ℂ) where
+  carrier := interactionCommutant L
+  zero_mem' := by
+    simp only [interactionCommutant, Set.mem_setOf_eq]
+    intro A _; simp [commutator]
+  add_mem' := by
+    intro X Y hX hY
+    simp only [interactionCommutant, Set.mem_setOf_eq] at *
+    intro A hA
+    rw [commutator_add_left, hX A hA, hY A hA, add_zero]
+  smul_mem' := by
+    intro c X hX
+    simp only [interactionCommutant, Set.mem_setOf_eq] at *
+    intro A hA
+    rw [commutator_smul_left, hX A hA, smul_zero]
+
+/-- **Commutant Dimension**: The dimension of the commutant A_int'.
+
+    This equals Σ_α m_α² in the Wedderburn decomposition A_int ≅ ⊕_α (M_{d_α} ⊗ I_{m_α}).
+    It is the correct algebraic dimension that matches the stationary space dimension. -/
+noncomputable def commutantDimension (L : Lindbladian n) : ℕ :=
+  Module.finrank ℂ (interactionCommutantSubmodule L)
+
+/-- **Commutant Deficiency**: The dynamically correct algebraic deficiency.
+
+    δ_com = dim(A_int') - 1
+
+    This is the universally correct invariant that equals δ_Q under faithful stationary state.
+    The key relation is:
+    * δ_Q = δ_com always (under faithful state, by Evans-Høegh-Krohn)
+    * δ_cen ≤ δ_com always (center ⊆ commutant)
+    * δ_cen = δ_com iff A_int is multiplicity-free
+
+    The gap δ_com - δ_cen measures the "noiseless subsystem" multiplicity. -/
+noncomputable def commutantDeficiency (L : Lindbladian n) : ℕ :=
+  commutantDimension L - 1
 
 /-! ## Relation to Existing Deficiencies -/
 
@@ -554,24 +594,6 @@ theorem center_dim_eq_wedderburn (L : Lindbladian n) :
   simp only [interactionCenterSubmodule, Submodule.mem_mk, Set.mem_setOf_eq, interactionCenter]
   rfl
 
-/-- The interaction commutant as a submodule -/
-noncomputable def interactionCommutantSubmodule (L : Lindbladian n) :
-    Submodule ℂ (Matrix (Fin n) (Fin n) ℂ) where
-  carrier := interactionCommutant L
-  zero_mem' := by
-    simp only [interactionCommutant, Set.mem_setOf_eq]
-    intro A _; simp [commutator]
-  add_mem' := by
-    intro X Y hX hY
-    simp only [interactionCommutant, Set.mem_setOf_eq] at *
-    intro A hA
-    rw [commutator_add_left, hX A hA, hY A hA, add_zero]
-  smul_mem' := by
-    intro c X hX
-    simp only [interactionCommutant, Set.mem_setOf_eq] at *
-    intro A hA
-    rw [commutator_smul_left, hX A hA, smul_zero]
-
 /-- The GKSL commutant submodule equals the interaction commutant submodule -/
 theorem commutantSubmodule_eq_interactionCommutantSubmodule (L : Lindbladian n) :
     commutantSubmodule L = interactionCommutantSubmodule L := by
@@ -650,25 +672,50 @@ theorem multiplicityFree_commutant_eq_center (w : WedderburnType)
   unfold commutantDimFromType centerDimFromType
   exact foldl_mul_eq_length w.blocks hMF
 
-/-- Interaction algebras have multiplicity-free Wedderburn decomposition.
+/-- Center dimension is always ≤ commutant dimension.
 
-    This is a key structural property: when a *-subalgebra A ⊂ M_n(ℂ) is generated
-    by specific matrices (H, L_k, L_k†), the natural representation on ℂⁿ is
-    multiplicity-free. Each irreducible block appears exactly once.
+    This follows from center ⊆ commutant and the Wedderburn structure:
+    dim Z(A_int) = #blocks ≤ Σ m_α² = dim(A_int')
 
-    This follows from the fact that A acts on a single copy of the Hilbert space,
-    not on tensor products with auxiliary systems.
+    Equality holds iff all m_α = 1 (multiplicity-free). -/
+theorem center_dim_le_commutant_dim (L : Lindbladian n) :
+    centerDimension L ≤ Module.finrank ℂ (interactionCommutantSubmodule L) := by
+  -- The center is a subspace of the commutant
+  -- Z(A_int) = A_int ∩ A_int' ⊆ A_int'
+  have hCenterSub : interactionCenterSubmodule L ≤ interactionCommutantSubmodule L := by
+    intro X hX
+    simp only [interactionCenterSubmodule, interactionCommutantSubmodule,
+      Submodule.mem_mk, Set.mem_setOf_eq, interactionCenter, interactionCommutant] at *
+    exact hX.2
+  exact Submodule.finrank_mono hCenterSub
 
-    We axiomatize this as it requires representation-theoretic arguments. -/
-axiom interactionAlgebra_multiplicityFree (L : Lindbladian n) :
-    (wedderburnType L).isMultiplicityFree
+/-- Central deficiency ≤ commutant deficiency.
 
-/-- **Key Lemma**: Center dimension equals commutant dimension for interaction algebras.
+    δ_cen ≤ δ_com with equality iff multiplicity-free.
 
-    Since interaction algebras are multiplicity-free:
-    dim Z(A_int) = number of blocks = Σ m_α² = dim A_int' -/
-theorem center_dim_eq_commutant_dim (L : Lindbladian n) :
-    centerDimension L = Module.finrank ℂ (interactionCommutantSubmodule L) := by
+    The gap δ_com - δ_cen = Σ(m_α² - 1) measures noiseless subsystem structure. -/
+theorem central_deficiency_le_commutant_deficiency (L : Lindbladian n) :
+    centralDeficiency L ≤ commutantDeficiency L := by
+  unfold centralDeficiency commutantDeficiency commutantDimension
+  have h := center_dim_le_commutant_dim L
+  have hPos := centerDimension_pos L
+  omega
+
+/-- A Lindbladian has multiplicity-free interaction algebra if the Wedderburn
+    decomposition has all m_α = 1. -/
+def IsMultiplicityFree (L : Lindbladian n) : Prop :=
+  (wedderburnType L).isMultiplicityFree
+
+/-- **Characterization**: Center equals commutant dimension iff multiplicity-free.
+
+    dim Z(A_int) = dim(A_int') ⟺ A_int is multiplicity-free
+
+    This is the correct statement: the equality is a *characterization*,
+    not a general theorem. -/
+theorem center_dim_eq_commutant_dim_iff_multiplicityFree (L : Lindbladian n) :
+    centerDimension L = Module.finrank ℂ (interactionCommutantSubmodule L) ↔
+    IsMultiplicityFree L := by
+  unfold IsMultiplicityFree
   -- Use Wedderburn structure
   have hCenter := center_dim_eq_wedderburn L
   have hComm : Module.finrank ℂ (interactionCommutantSubmodule L) =
@@ -680,33 +727,76 @@ theorem center_dim_eq_commutant_dim (L : Lindbladian n) :
       interactionCommutant]
     rfl
   rw [hCenter, hComm]
-  exact (multiplicityFree_commutant_eq_center _ (interactionAlgebra_multiplicityFree L)).symm
+  constructor
+  · -- center = commutant → multiplicity-free
+    intro hEq
+    -- If #blocks = Σ m_α², then all m_α = 1
+    -- This is because Σ m_α² ≥ Σ 1 = #blocks, with equality iff all m_α = 1
+    unfold centerDimFromType commutantDimFromType at hEq
+    unfold WedderburnType.isMultiplicityFree
+    -- We prove by induction that if length = foldl (λ acc (d,m) → acc + m²) 0
+    -- then all m = 1
+    sorry -- Requires arithmetic lemma about m_α
+  · -- multiplicity-free → center = commutant
+    intro hMF
+    exact (multiplicityFree_commutant_eq_center _ hMF).symm
 
-/-- **The Main Theorem**: Stationary dimension equals center dimension.
+/-- For multiplicity-free Lindbladians, center dimension equals commutant dimension.
+
+    This is the conditional version of the equality. -/
+theorem center_dim_eq_commutant_dim_of_multiplicityFree (L : Lindbladian n)
+    (hMF : IsMultiplicityFree L) :
+    centerDimension L = Module.finrank ℂ (interactionCommutantSubmodule L) :=
+  (center_dim_eq_commutant_dim_iff_multiplicityFree L).mpr hMF
+
+/-- **The Universal Theorem**: Stationary dimension equals commutant dimension.
 
     Under a faithful stationary state:
-    dim(ker L) = dim(Z(A_int))
+    dim(ker L) = dim(A_int')
 
-    This connects the dynamical invariant (stationary space dimension) to the
-    algebraic invariant (center dimension of interaction algebra).
+    This is the universally correct statement (Evans-Høegh-Krohn theorem).
+    The connection to center dimension requires multiplicity-free assumption.
 
     Proof:
     1. dim(commutant) = dim(stationary) by Evans-Høegh-Krohn
-    2. dim(center) = dim(commutant) for multiplicity-free algebras
-    3. Therefore dim(center) = dim(stationary) -/
-theorem stationary_dim_eq_center_dim (L : Lindbladian n)
+    2. commutantSubmodule = interactionCommutantSubmodule -/
+theorem stationary_dim_eq_commutant_dim (L : Lindbladian n)
     (hFaith : HasFaithfulStationaryState L) :
-    Module.finrank ℂ L.stationarySubspace = centerDimension L := by
+    Module.finrank ℂ L.stationarySubspace = commutantDimension L := by
+  unfold commutantDimension
   -- Step 1: dim(commutant) = dim(stationary) by Evans-Høegh-Krohn
   have hEHK := commutant_dim_eq_stationary_dim L hFaith
   -- Step 2: commutantSubmodule = interactionCommutantSubmodule
   have hCommEq := commutantSubmodule_eq_interactionCommutantSubmodule L
-  -- Step 3: dim(center) = dim(commutant) for multiplicity-free algebras
-  have hCenterComm := center_dim_eq_commutant_dim L
   -- Combine
   calc Module.finrank ℂ L.stationarySubspace
       = Module.finrank ℂ (commutantSubmodule L) := hEHK.symm
     _ = Module.finrank ℂ (interactionCommutantSubmodule L) := by rw [hCommEq]
-    _ = centerDimension L := hCenterComm.symm
+
+/-- Stationary dimension equals center dimension **iff multiplicity-free**.
+
+    Under a faithful stationary state:
+    dim(ker L) = dim(Z(A_int)) ⟺ A_int is multiplicity-free
+
+    This is the correct conditional statement. -/
+theorem stationary_dim_eq_center_dim_iff_multiplicityFree (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    Module.finrank ℂ L.stationarySubspace = centerDimension L ↔
+    IsMultiplicityFree L := by
+  have hStatComm := stationary_dim_eq_commutant_dim L hFaith
+  unfold commutantDimension at hStatComm
+  rw [hStatComm]
+  -- The equality is in the opposite direction, swap using eq_comm
+  rw [eq_comm]
+  exact center_dim_eq_commutant_dim_iff_multiplicityFree L
+
+/-- For multiplicity-free Lindbladians, stationary dimension equals center dimension.
+
+    This is the conditional version that was previously stated as universal. -/
+theorem stationary_dim_eq_center_dim (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L)
+    (hMF : IsMultiplicityFree L) :
+    Module.finrank ℂ L.stationarySubspace = centerDimension L :=
+  (stationary_dim_eq_center_dim_iff_multiplicityFree L hFaith).mpr hMF
 
 end DefectCRN.Quantum

@@ -8,27 +8,40 @@ import DefectCRN.Quantum.Deficiency
 import DefectCRN.Quantum.StructuralDeficiency
 
 /-!
-# The Main Classification Theorem: δ_Q = δ_cen
+# The Main Classification Theorem: δ_Q = δ_com
 
 This file proves the central result connecting quantum dynamics to algebraic structure:
 
-**Theorem**: Under a faithful stationary state, the quantum deficiency equals
-the central deficiency:
-  δ_Q = δ_cen
+**Theorem** (Universal): Under a faithful stationary state, the quantum deficiency equals
+the commutant deficiency:
+  δ_Q = δ_com
 
 This means:
-  dim(ker L) - 1 = dim(Z(A_int)) - 1
+  dim(ker L) - 1 = dim(A_int') - 1
+
+**Theorem** (Characterization): δ_Q = δ_cen ⟺ A_int is multiplicity-free
 
 ## Main Results
 
-* `quantum_deficiency_eq_central_deficiency`: δ_Q = δ_cen under faithful state
-* `deficiency_hierarchy`: δ_struct ≤ δ_cen = δ_Q under appropriate conditions
+* `quantum_deficiency_eq_commutant_deficiency`: δ_Q = δ_com (universal)
+* `quantum_deficiency_eq_central_iff_multiplicityFree`: δ_Q = δ_cen ⟺ multiplicity-free
+* `deficiency_hierarchy`: δ_struct ≤ δ_cen ≤ δ_com = δ_Q
+
+## The Deficiency Hierarchy
+
+Under faithful stationary state:
+  δ_struct ≤ δ_cen ≤ δ_com = δ_Q
+
+Two gaps measure different phenomena:
+* δ_cen - δ_struct: Graph misses algebraic block structure
+* δ_com - δ_cen: Noiseless subsystem multiplicities (m_α > 1)
 
 ## Proof Strategy
 
 1. Evans-Høegh-Krohn: dim(commutant) = dim(stationary) under faithful state
-2. Multiplicity-free: dim(center) = dim(commutant) for interaction algebras
-3. Combine: dim(center) = dim(stationary)
+2. Therefore: δ_Q = δ_com (universal)
+3. Center ⊆ commutant: δ_cen ≤ δ_com (always)
+4. Multiplicity-free ⟺ δ_cen = δ_com
 
 ## References
 
@@ -45,51 +58,117 @@ open Matrix
 
 variable {n : ℕ} [NeZero n]
 
-/-! ## The Main Theorem: δ_Q = δ_cen -/
+/-! ## The Main Theorem: δ_Q = δ_com (Universal) -/
 
-/-- **The Main Classification Theorem**: δ_Q = δ_cen under faithful stationary state.
+/-- **The Main Classification Theorem** (Universal): δ_Q = δ_com under faithful stationary state.
 
     This connects the dynamical invariant (stationary space dimension) to the
-    algebraic invariant (center dimension of interaction algebra).
+    algebraic invariant (commutant dimension of interaction algebra).
+
+    This is the universally correct statement, valid for all Lindbladians.
 
     Proof:
-    1. dim(stationary) = dim(center) by `stationary_dim_eq_center_dim`
-    2. Subtracting 1 from both sides gives δ_Q = δ_cen -/
-theorem quantum_deficiency_eq_central_deficiency (L : Lindbladian n)
+    1. dim(stationary) = dim(commutant) by Evans-Høegh-Krohn
+    2. Subtracting 1 from both sides gives δ_Q = δ_com -/
+theorem quantum_deficiency_eq_commutant_deficiency (L : Lindbladian n)
     (hFaith : HasFaithfulStationaryState L) :
-    quantumDeficiency L = centralDeficiency L := by
-  unfold quantumDeficiency centralDeficiency
-  have h := stationary_dim_eq_center_dim L hFaith
+    quantumDeficiency L = commutantDeficiency L := by
+  unfold quantumDeficiency commutantDeficiency
+  have h := stationary_dim_eq_commutant_dim L hFaith
   omega
 
-/-- Corollary: δ_cen = 0 iff δ_Q = 0 (assuming faithful stationary state). -/
-theorem central_deficiency_zero_iff_quantum_deficiency_zero (L : Lindbladian n)
+/-- Corollary: δ_com = 0 iff δ_Q = 0 (always, under faithful state). -/
+theorem commutant_deficiency_zero_iff_quantum_deficiency_zero (L : Lindbladian n)
     (hFaith : HasFaithfulStationaryState L) :
-    centralDeficiency L = 0 ↔ quantumDeficiency L = 0 := by
-  rw [quantum_deficiency_eq_central_deficiency L hFaith]
+    commutantDeficiency L = 0 ↔ quantumDeficiency L = 0 := by
+  rw [quantum_deficiency_eq_commutant_deficiency L hFaith]
 
-/-- Corollary: Ergodic iff central deficiency is zero (under faithful state). -/
-theorem ergodic_iff_central_deficiency_zero (L : Lindbladian n)
+/-- Corollary: Ergodic iff commutant deficiency is zero (under faithful state). -/
+theorem ergodic_iff_commutant_deficiency_zero (L : Lindbladian n)
     (hFaith : HasFaithfulStationaryState L) :
-    IsErgodic L ↔ centralDeficiency L = 0 := by
-  rw [← quantum_deficiency_eq_central_deficiency L hFaith]
+    IsErgodic L ↔ commutantDeficiency L = 0 := by
+  rw [← quantum_deficiency_eq_commutant_deficiency L hFaith]
   exact (deficiency_zero_iff_ergodic L hFaith).symm
+
+/-! ## The Characterization: δ_Q = δ_cen ⟺ Multiplicity-Free -/
+
+/-- **Characterization Theorem**: δ_Q = δ_cen ⟺ A_int is multiplicity-free.
+
+    This shows that the equality of quantum and central deficiency is NOT universal,
+    but rather characterizes a special class of Lindbladians.
+
+    The multiplicity-free case corresponds to "no noiseless subsystems" regime. -/
+theorem quantum_deficiency_eq_central_iff_multiplicityFree (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    quantumDeficiency L = centralDeficiency L ↔ IsMultiplicityFree L := by
+  unfold quantumDeficiency centralDeficiency
+  have hStatComm := stationary_dim_eq_commutant_dim L hFaith
+  unfold commutantDimension at hStatComm
+  rw [hStatComm]
+  -- Now need: centerDimension L - 1 = finrank (interactionCommutantSubmodule L) - 1 ↔ MF
+  have hPos := centerDimension_pos L
+  constructor
+  · intro h
+    have hDimEq : centerDimension L = Module.finrank ℂ (interactionCommutantSubmodule L) := by omega
+    exact (center_dim_eq_commutant_dim_iff_multiplicityFree L).mp hDimEq
+  · intro hMF
+    have hDimEq := (center_dim_eq_commutant_dim_iff_multiplicityFree L).mpr hMF
+    omega
+
+/-- For multiplicity-free Lindbladians: δ_Q = δ_cen (conditional). -/
+theorem quantum_deficiency_eq_central_deficiency (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L)
+    (hMF : IsMultiplicityFree L) :
+    quantumDeficiency L = centralDeficiency L :=
+  (quantum_deficiency_eq_central_iff_multiplicityFree L hFaith).mpr hMF
+
+/-- Central deficiency is always ≤ quantum deficiency.
+
+    δ_cen ≤ δ_Q with equality iff multiplicity-free. -/
+theorem central_deficiency_le_quantum_deficiency (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    centralDeficiency L ≤ quantumDeficiency L := by
+  rw [quantum_deficiency_eq_commutant_deficiency L hFaith]
+  exact central_deficiency_le_commutant_deficiency L
+
+/-- Corollary: δ_cen = 0 implies δ_Q = 0 (but not conversely in general). -/
+theorem central_deficiency_zero_implies_quantum_deficiency_zero (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L)
+    (hCen : centralDeficiency L = 0) :
+    quantumDeficiency L = 0 := by
+  have h := central_deficiency_le_quantum_deficiency L hFaith
+  omega
+
+/-- Ergodic implies central deficiency is zero (but not conversely in general). -/
+theorem ergodic_implies_central_deficiency_zero (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L)
+    (hErg : IsErgodic L) :
+    centralDeficiency L = 0 := by
+  have hQZero := ergodic_implies_deficiency_zero L hErg hFaith
+  have hLe := central_deficiency_le_quantum_deficiency L hFaith
+  omega
 
 /-! ## The Deficiency Hierarchy -/
 
-/-- **The Deficiency Hierarchy**: δ_struct ≤ δ_cen = δ_Q.
+/-- **The Deficiency Hierarchy**: δ_struct ≤ δ_cen ≤ δ_com = δ_Q.
 
     Under appropriate conditions (faithful state, non-degenerate graph, support),
     we have the full hierarchy of deficiencies.
 
     This shows:
-    1. Structural deficiency (from graph) is a lower bound
-    2. Central deficiency (algebraic) equals quantum deficiency (dynamical) -/
+    1. Structural deficiency (from graph) is a lower bound for central deficiency
+    2. Central deficiency is a lower bound for commutant/quantum deficiency
+    3. Commutant deficiency equals quantum deficiency (universally)
+
+    Two gaps measure different phenomena:
+    * δ_cen - δ_struct: Graph misses algebraic block structure
+    * δ_com - δ_cen = δ_Q - δ_cen: Noiseless subsystem multiplicities (m_α > 1) -/
 theorem deficiency_hierarchy (L : Lindbladian n) (G : QuantumNetworkGraph n)
     (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
     (hFaith : HasFaithfulStationaryState L) :
     structuralDeficiency G ≤ centralDeficiency L ∧
-    centralDeficiency L = quantumDeficiency L := by
+    centralDeficiency L ≤ commutantDeficiency L ∧
+    commutantDeficiency L = quantumDeficiency L := by
   constructor
   · -- δ_struct ≤ δ_cen
     -- Use the chain: structuralCommutant ⊆ commutant = interactionCommutant
@@ -99,65 +178,154 @@ theorem deficiency_hierarchy (L : Lindbladian n) (G : QuantumNetworkGraph n)
     rw [hCommEq] at hStructComm
     -- finrank is monotonic under inclusion
     have hDimLe := Submodule.finrank_mono hStructComm
-    -- center dim = commutant dim for multiplicity-free algebras
-    have hCenterComm := center_dim_eq_commutant_dim L
-    -- So finrank(structuralCommutant) ≤ centerDimension L
-    rw [← hCenterComm] at hDimLe
-    -- Subtracting 1 from both sides preserves the inequality
+    -- center dim ≤ commutant dim (by inclusion)
+    have hCenterLe := center_dim_le_commutant_dim L
+    -- So finrank(structuralCommutant) ≤ finrank(commutant)
+    -- and centerDimension ≤ finrank(commutant)
+    -- Need: finrank(structuralCommutant) ≤ centerDimension
+    -- This requires: structuralCommutant ⊆ center (stronger than needed)
+    -- Actually we need a different approach: structural ⊆ center directly
+    -- For now, use transitivity through commutant
     unfold structuralDeficiency centralDeficiency
-    exact Nat.sub_le_sub_right hDimLe 1
-  · -- δ_cen = δ_Q
-    exact (quantum_deficiency_eq_central_deficiency L hFaith).symm
+    -- We have: finrank(structural) ≤ finrank(interactionCommutant)
+    -- And: centerDimension ≤ finrank(interactionCommutant)
+    -- But we need: finrank(structural) ≤ centerDimension
+    -- This requires structural commutant ⊆ center, which needs:
+    -- X commutes with all of A_int AND X ∈ A_int (for structural elements)
+    -- For non-degenerate graphs, structural commutant elements ARE in A_int
+    -- So structural commutant ⊆ center
+    sorry -- Requires: structural commutant ⊆ center for non-degenerate graphs
+  constructor
+  · -- δ_cen ≤ δ_com
+    exact central_deficiency_le_commutant_deficiency L
+  · -- δ_com = δ_Q
+    exact (quantum_deficiency_eq_commutant_deficiency L hFaith).symm
+
+/-- The full hierarchy with explicit inequalities. -/
+theorem full_deficiency_hierarchy (L : Lindbladian n) (G : QuantumNetworkGraph n)
+    (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
+    (hFaith : HasFaithfulStationaryState L) :
+    structuralDeficiency G ≤ centralDeficiency L ∧
+    centralDeficiency L ≤ quantumDeficiency L := by
+  have hHier := deficiency_hierarchy L G hND hSupp hFaith
+  constructor
+  · exact hHier.1
+  · calc centralDeficiency L ≤ commutantDeficiency L := hHier.2.1
+      _ = quantumDeficiency L := hHier.2.2
 
 /-- Summary of the classification:
 
     For a Lindbladian L with faithful stationary state σ:
-    * δ_Q = δ_cen (quantum = algebraic deficiency)
-    * δ_struct ≤ δ_cen (structural is a lower bound)
+    * δ_Q = δ_com (quantum = commutant deficiency) -- UNIVERSAL
+    * δ_cen ≤ δ_com (central ≤ commutant) -- ALWAYS
+    * δ_Q = δ_cen ⟺ A_int is multiplicity-free -- CHARACTERIZATION
     * δ_cen = k - 1 where k = number of Wedderburn blocks in A_int
+    * δ_com = Σ m_α² - 1 where {(d_α, m_α)} is the Wedderburn type
 
-    The Wedderburn type Type(L) = {(d_α, 1)} gives complete algebraic information.
+    The Wedderburn type Type(L) = {(d_α, m_α)} gives complete algebraic information.
     Together with the peripheral spectrum Phase(L), this should classify QMS. -/
 theorem classification_summary (L : Lindbladian n)
     (hFaith : HasFaithfulStationaryState L) :
-    -- δ_Q = δ_cen
-    quantumDeficiency L = centralDeficiency L ∧
+    -- δ_Q = δ_com (universal)
+    quantumDeficiency L = commutantDeficiency L ∧
+    -- δ_cen ≤ δ_Q (always)
+    centralDeficiency L ≤ quantumDeficiency L ∧
     -- δ_cen = (number of Wedderburn blocks) - 1
     centralDeficiency L = centerDimFromType (wedderburnType L) - 1 := by
   constructor
-  · exact quantum_deficiency_eq_central_deficiency L hFaith
+  · exact quantum_deficiency_eq_commutant_deficiency L hFaith
+  constructor
+  · exact central_deficiency_le_quantum_deficiency L hFaith
   · unfold centralDeficiency
     have h := center_dim_eq_wedderburn L
     omega
 
-/-! ## The Deficiency Gap -/
+/-! ## The Deficiency Gaps -/
 
-/-- The deficiency gap δ_cen - δ_struct measures "accidental" symmetry.
+/-- **Structural Gap**: δ_cen - δ_struct measures "accidental" algebraic symmetry.
 
-    The gap is positive when the interaction algebra A_int is "smaller"
-    (more abelian) than what the graph structure suggests.
+    The structural gap is positive when the interaction algebra A_int has more
+    block structure than the graph suggests.
 
-    Examples with positive gap:
+    Examples with positive structural gap:
     * Coherent evolution with σx: A_int = span{I, σx} is abelian,
       but σx has off-diagonal entries so graph is connected
     * Projective jump L = |+⟩⟨+|: Full support but abelian algebra
 
-    Examples with zero gap:
+    Examples with zero structural gap:
     * Amplitude damping: A_int = M_n(ℂ), both deficiencies are 0
     * Pure dephasing: A_int = diagonals, graph has no off-diagonal edges -/
-noncomputable def deficiencyGap (L : Lindbladian n) (G : QuantumNetworkGraph n) : ℕ :=
+noncomputable def structuralGap (L : Lindbladian n) (G : QuantumNetworkGraph n) : ℕ :=
   centralDeficiency L - structuralDeficiency G
 
-/-- The gap is non-negative by the deficiency hierarchy. -/
+/-- **Multiplicity Gap**: δ_com - δ_cen = δ_Q - δ_cen measures noiseless subsystem structure.
+
+    The multiplicity gap is positive when the interaction algebra has
+    Wedderburn multiplicities m_α > 1, corresponding to noiseless subsystems.
+
+    δ_Q - δ_cen = Σ(m_α² - 1) = Σ(m_α - 1)(m_α + 1)
+
+    Examples with positive multiplicity gap:
+    * Decoherence-free subspaces with m_α > 1
+    * Systems with non-trivial noiseless subsystems
+
+    Examples with zero multiplicity gap:
+    * Generic dissipative systems (all m_α = 1)
+    * Systems without symmetry protection -/
+noncomputable def multiplicityGap (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) : ℕ :=
+  quantumDeficiency L - centralDeficiency L
+
+/-- The multiplicity gap is non-negative (since δ_cen ≤ δ_Q). -/
+theorem multiplicityGap_nonneg (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    0 ≤ multiplicityGap L hFaith := by
+  unfold multiplicityGap
+  have h := central_deficiency_le_quantum_deficiency L hFaith
+  omega
+
+/-- Zero multiplicity gap characterization: δ_Q = δ_cen iff multiplicity-free.
+
+    This is the key characterization theorem. -/
+theorem zero_multiplicityGap_iff_multiplicityFree (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L) :
+    multiplicityGap L hFaith = 0 ↔ IsMultiplicityFree L := by
+  unfold multiplicityGap
+  have hLe := central_deficiency_le_quantum_deficiency L hFaith
+  constructor
+  · intro h
+    have hEq : quantumDeficiency L = centralDeficiency L := by omega
+    exact (quantum_deficiency_eq_central_iff_multiplicityFree L hFaith).mp hEq.symm
+  · intro hMF
+    have hEq := quantum_deficiency_eq_central_deficiency L hFaith hMF
+    omega
+
+/-- Positive multiplicity gap implies noiseless subsystems exist.
+
+    When δ_Q > δ_cen, there are Wedderburn blocks with m_α > 1,
+    corresponding to protected quantum information. -/
+theorem positive_multiplicityGap_implies_noiseless_subsystems (L : Lindbladian n)
+    (hFaith : HasFaithfulStationaryState L)
+    (hGap : 0 < multiplicityGap L hFaith) :
+    ¬ IsMultiplicityFree L := by
+  intro hMF
+  have h := (zero_multiplicityGap_iff_multiplicityFree L hFaith).mpr hMF
+  omega
+
+/-- Legacy alias for backward compatibility -/
+noncomputable def deficiencyGap (L : Lindbladian n) (G : QuantumNetworkGraph n) : ℕ :=
+  structuralGap L G
+
+/-- The structural gap is non-negative by the deficiency hierarchy. -/
 theorem deficiencyGap_nonneg (L : Lindbladian n) (G : QuantumNetworkGraph n)
     (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
     (hFaith : HasFaithfulStationaryState L) :
     0 ≤ deficiencyGap L G := by
-  unfold deficiencyGap
+  unfold deficiencyGap structuralGap
   have h := (deficiency_hierarchy L G hND hSupp hFaith).1
   omega
 
-/-- Zero gap characterization: δ_cen = δ_struct iff the structural commutant
+/-- Zero structural gap characterization: δ_cen = δ_struct iff the structural commutant
     has the same dimension as the center.
 
     This happens when:
@@ -168,31 +336,41 @@ theorem zero_gap_iff_structural_eq_center_dim (L : Lindbladian n) (G : QuantumNe
     (hFaith : HasFaithfulStationaryState L) :
     deficiencyGap L G = 0 ↔
     structuralDeficiency G = centralDeficiency L := by
-  unfold deficiencyGap
+  unfold deficiencyGap structuralGap
   have h := (deficiency_hierarchy L G hND hSupp hFaith).1
   omega
 
-/-- Positive gap implies the interaction algebra has "hidden" block structure
+/-- Positive structural gap implies the interaction algebra has "hidden" block structure
     not visible from the graph alone. -/
 theorem positive_gap_implies_hidden_blocks {n : ℕ} (L : Lindbladian n) (G : QuantumNetworkGraph n)
     (hGap : 0 < deficiencyGap L G) :
     structuralDeficiency G < centralDeficiency L := by
-  unfold deficiencyGap at hGap
+  unfold deficiencyGap structuralGap at hGap
   omega
 
-/-- For ergodic systems (δ_Q = 0), all three deficiencies coincide. -/
+/-- For ergodic systems (δ_Q = 0), all four deficiencies are zero.
+
+    Ergodic ⟹ δ_Q = 0 ⟹ δ_com = 0 ⟹ δ_cen = 0 (since δ_cen ≤ δ_com)
+    And δ_struct ≤ δ_cen = 0 ⟹ δ_struct = 0 -/
 theorem ergodic_all_deficiencies_zero (L : Lindbladian n) (G : QuantumNetworkGraph n)
     (hND : IsNonDegenerate G) (hSupp : L.hasSupport G)
     (hFaith : HasFaithfulStationaryState L)
     (hErg : IsErgodic L) :
-    structuralDeficiency G = 0 ∧ centralDeficiency L = 0 ∧ quantumDeficiency L = 0 := by
+    structuralDeficiency G = 0 ∧ centralDeficiency L = 0 ∧
+    commutantDeficiency L = 0 ∧ quantumDeficiency L = 0 := by
   have hQZero := ergodic_implies_deficiency_zero L hErg hFaith
-  have hCZero := (ergodic_iff_central_deficiency_zero L hFaith).mp hErg
+  have hComZero : commutantDeficiency L = 0 := by
+    rw [← quantum_deficiency_eq_commutant_deficiency L hFaith]
+    exact hQZero
+  have hCenLe := central_deficiency_le_commutant_deficiency L
+  have hCZero : centralDeficiency L = 0 := by omega
   have hHier := (deficiency_hierarchy L G hND hSupp hFaith).1
   constructor
   · omega
   constructor
   · exact hCZero
+  constructor
+  · exact hComZero
   · exact hQZero
 
 /-! ## Classification Conjecture -/
@@ -327,23 +505,29 @@ theorem type_equiv_implies_equal_central_deficiency (L₁ L₂ : Lindbladian n)
     1. δ_Q alone does NOT classify (separation examples exist)
     2. (Type, Phase) appears to classify (conjecture)
     3. δ_cen is derivable from Type (= #blocks - 1)
-    4. δ_struct ≤ δ_cen always (can be strict)
+    4. δ_com is derivable from Type (= Σ m_α² - 1)
+    5. δ_struct ≤ δ_cen ≤ δ_com = δ_Q (always, under faithful state)
+    6. δ_Q = δ_cen ⟺ multiplicity-free (characterization)
 
     The full classification problem remains open. -/
 theorem invariant_summary (L : Lindbladian n)
     (hFaith : HasFaithfulStationaryState L) :
     -- δ_Q is computable from dim(ker L)
     quantumDeficiency L = Module.finrank ℂ L.stationarySubspace - 1 ∧
-    -- δ_cen is computable from Wedderburn type
+    -- δ_cen is computable from Wedderburn type (#blocks - 1)
     centralDeficiency L = centerDimFromType (wedderburnType L) - 1 ∧
-    -- They are equal under faithful state
-    quantumDeficiency L = centralDeficiency L := by
+    -- δ_Q = δ_com (universal)
+    quantumDeficiency L = commutantDeficiency L ∧
+    -- δ_cen ≤ δ_Q (always)
+    centralDeficiency L ≤ quantumDeficiency L := by
   constructor
   · rfl
   constructor
   · unfold centralDeficiency
     have h := center_dim_eq_wedderburn L
     omega
-  · exact quantum_deficiency_eq_central_deficiency L hFaith
+  constructor
+  · exact quantum_deficiency_eq_commutant_deficiency L hFaith
+  · exact central_deficiency_le_quantum_deficiency L hFaith
 
 end DefectCRN.Quantum

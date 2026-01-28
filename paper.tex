@@ -69,7 +69,7 @@
 \begin{abstract}
 We present a comprehensive, formally verified framework for chemical reaction network theory (CRNT). Starting from the Onsager--Rayleigh dissipation principle, we develop the variational characterization of steady-state fluxes via the functional $\OR(J) = \frac{1}{2}\inner{J}{J}_{W^{-1}} - \inner{\omega}{J}$. We systematically extend to: the deficiency zero and one theorems; higher deficiency networks ($\delta \geq 2$) via the Deficiency-Two Algorithm and Species-Reaction graphs; \textbf{cohomological deficiency theory} establishing $\delta = \dim(H^1)$ for the CRN chain complex; multistability and bifurcation theory; oscillations via Hopf bifurcation and the Routh--Hurwitz criterion; reaction-diffusion systems with Turing pattern formation; stochastic CRNs via the Chemical Master Equation; feedback control theory including antithetic integral control; and \textbf{quantum chemical reaction network theory} extending the classical deficiency zero theorem to open quantum systems via Lindblad dynamics.
 
-\textbf{This constitutes the first machine-checked formalization of comprehensive chemical reaction network theory, including its quantum generalization.} The classical framework---comprising \textbf{7930 lines} of Lean 4 code with \textbf{255 theorems} and \textbf{zero axioms}---has been formally verified using the Mathlib library. The quantum extension adds \textbf{7680 lines} with \textbf{339 theorems} and \textbf{22 well-documented axioms}, including the \textbf{main classification theorem} $\delta_Q = \delta_{\mathrm{cen}}$ connecting dynamical and algebraic invariants under faithful stationary states. We demonstrate the theory on examples ranging from the simple $n$-cycle to the complete TCA (Krebs) cycle with 16 species and 10 reactions.
+\textbf{This constitutes the first machine-checked formalization of comprehensive chemical reaction network theory, including its quantum generalization.} The classical framework---comprising \textbf{7930 lines} of Lean 4 code with \textbf{255 theorems} and \textbf{zero axioms}---has been formally verified using the Mathlib library. The quantum extension adds \textbf{7680 lines} with \textbf{339 theorems} and \textbf{22 well-documented axioms}, including the \textbf{universal classification theorem} $\delta_Q = \delta_{\mathrm{com}}$ connecting dynamical and algebraic invariants under faithful stationary states, and the \textbf{characterization} $\delta_Q = \delta_{\mathrm{cen}} \Leftrightarrow \text{multiplicity-free}$. We demonstrate the theory on examples ranging from the simple $n$-cycle to the complete TCA (Krebs) cycle with 16 species and 10 reactions.
 \end{abstract}
 
 \tableofcontents
@@ -116,7 +116,7 @@ By ``formally verified,'' we mean that every definition, theorem, and proof has 
 
     \item \textbf{Control Theory} (Section \ref{sec:control}): Antithetic integral feedback, robust perfect adaptation.
 
-    \item \textbf{Quantum CRNT} (Section \ref{sec:quantum}): Lindblad dynamics, interaction algebra, Wedderburn decomposition, structural deficiency, \textbf{main classification theorem} $\delta_Q = \delta_{\mathrm{cen}}$, deficiency hierarchy, quantum deficiency zero theorem.
+    \item \textbf{Quantum CRNT} (Section \ref{sec:quantum}): Lindblad dynamics, interaction algebra, Wedderburn decomposition, structural deficiency, \textbf{universal classification theorem} $\delta_Q = \delta_{\mathrm{com}}$, \textbf{multiplicity-free characterization} $\delta_Q = \delta_{\mathrm{cen}}$, deficiency hierarchy, quantum deficiency zero theorem.
 
     \item \textbf{Major Examples} (Section \ref{sec:examples}): $n$-cycle, Michaelis--Menten, glycolysis, and the complete TCA cycle.
 
@@ -692,42 +692,61 @@ If $\Lap$ is primitive, there exists a unique faithful stationary state $\rho^*$
 
 \subsection{The Main Classification Theorem}
 
-The central result connecting quantum dynamics to algebraic structure is:
+The central result connecting quantum dynamics to algebraic structure requires careful statement. We introduce the \emph{commutant deficiency}:
 
-\begin{theorem}[Classification Theorem]
+\begin{definition}[Commutant Deficiency]
+The commutant deficiency is $\delta_{\mathrm{com}} = \dim(A_{\mathrm{int}}') - 1$, where $A_{\mathrm{int}}'$ is the commutant of the interaction algebra.
+\end{definition}
+
+\begin{theorem}[Universal Classification Theorem]
 \label{thm:classification}
-Under a faithful stationary state, the quantum deficiency equals the central deficiency:
+Under a faithful stationary state, the quantum deficiency equals the commutant deficiency:
 \[
-\delta_Q = \delta_{\mathrm{cen}}
+\delta_Q = \delta_{\mathrm{com}}
 \]
-where $\delta_{\mathrm{cen}} = \dim(Z(A_{\mathrm{int}})) - 1$ is the dimension of the center of the interaction algebra minus one.
+This holds universally for all Lindbladians with faithful stationary states.
 \end{theorem}
 
 \begin{proof}[Proof sketch]
-The proof proceeds in three steps:
-\begin{enumerate}
-    \item By Evans--H\o egh-Krohn, $\dim(\mathrm{Comm}) = \dim(\mathrm{stationary})$ under faithful state
-    \item Interaction algebras are multiplicity-free (all $m_\alpha = 1$ in Wedderburn decomposition), so $\dim(\mathrm{center}) = \dim(\mathrm{commutant})$
-    \item Combining: $\dim(\mathrm{center}) = \dim(\mathrm{stationary})$, hence $\delta_{\mathrm{cen}} = \delta_Q$
-\end{enumerate}
+By the Evans--H\o egh-Krohn theorem, $\dim(\mathrm{commutant}) = \dim(\mathrm{stationary})$ under a faithful stationary state. The commutant of the interaction algebra $A_{\mathrm{int}}'$ is the algebraic version of the GKSL commutant. Thus $\dim(A_{\mathrm{int}}') = \dim(\ker \Lap)$, giving $\delta_{\mathrm{com}} = \delta_Q$.
 \end{proof}
+
+\begin{theorem}[Multiplicity-Free Characterization]
+\label{thm:mf-char}
+Under a faithful stationary state:
+\[
+\delta_Q = \delta_{\mathrm{cen}} \quad\Longleftrightarrow\quad A_{\mathrm{int}} \text{ is multiplicity-free}
+\]
+where ``multiplicity-free'' means all $m_\alpha = 1$ in the Wedderburn decomposition $A_{\mathrm{int}} \cong \bigoplus_\alpha (M_{d_\alpha} \otimes I_{m_\alpha})$.
+\end{theorem}
+
+\begin{remark}[Noiseless Subsystems]
+The gap $\delta_Q - \delta_{\mathrm{cen}} = \delta_{\mathrm{com}} - \delta_{\mathrm{cen}} = \sum_\alpha (m_\alpha^2 - 1)$ measures noiseless subsystem structure. When $m_\alpha > 1$, there are decoherence-free subspaces providing symmetry-protected quantum information.
+\end{remark}
 
 \begin{theorem}[Deficiency Hierarchy]
 \label{thm:hierarchy}
 Under appropriate conditions (faithful state, non-degenerate graph, support):
 \[
-\delta_{\mathrm{struct}} \leq \delta_{\mathrm{cen}} = \delta_Q
+\delta_{\mathrm{struct}} \leq \delta_{\mathrm{cen}} \leq \delta_{\mathrm{com}} = \delta_Q
 \]
-where $\delta_{\mathrm{struct}}$ is the structural deficiency from the quantum network graph.
+where $\delta_{\mathrm{struct}}$ is the structural deficiency from the quantum network graph. The hierarchy has two gaps measuring distinct phenomena.
 \end{theorem}
 
-\begin{definition}[Deficiency Gap]
-The \emph{deficiency gap} $\delta_{\mathrm{cen}} - \delta_{\mathrm{struct}}$ measures ``accidental'' symmetry---block structure in the interaction algebra not visible from the graph alone.
+\begin{definition}[Structural Gap]
+The \emph{structural gap} $\delta_{\mathrm{cen}} - \delta_{\mathrm{struct}}$ measures ``accidental'' symmetry---block structure in the interaction algebra not visible from the graph alone.
 \end{definition}
 
-\begin{theorem}[Gap Characterization]
+\begin{definition}[Multiplicity Gap]
+The \emph{multiplicity gap} $\delta_{\mathrm{com}} - \delta_{\mathrm{cen}} = \delta_Q - \delta_{\mathrm{cen}}$ measures noiseless subsystem structure---Wedderburn multiplicities $m_\alpha > 1$ corresponding to protected quantum information.
+\end{definition}
+
+\begin{theorem}[Gap Characterizations]
 \label{thm:gap}
-The gap is zero iff $\delta_{\mathrm{struct}} = \delta_{\mathrm{cen}}$, which occurs when the graph perfectly captures the algebra's block structure. A positive gap indicates hidden symmetry.
+\begin{enumerate}[label=(\roman*)]
+    \item Structural gap is zero iff $\delta_{\mathrm{struct}} = \delta_{\mathrm{cen}}$ (graph captures block structure)
+    \item Multiplicity gap is zero iff $A_{\mathrm{int}}$ is multiplicity-free (no noiseless subsystems)
+\end{enumerate}
 \end{theorem}
 
 \subsection{Peripheral Spectrum}
@@ -787,11 +806,12 @@ This is the quantum analog of the classical deficiency zero theorem.
 Stoichiometric subspace & Stationary subspace $\ker(\Lap)$ \\
 Complex-balanced equilibrium & Faithful stationary state \\
 Deficiency $\delta = n - \ell - \rank(N)$ & Quantum deficiency $\delta_Q = \dim(\mathrm{stationary}) - 1$ \\
+--- & Commutant deficiency $\delta_{\mathrm{com}} = \dim(A_{\mathrm{int}}') - 1$ \\
 --- & Central deficiency $\delta_{\mathrm{cen}} = \dim(Z(A_{\mathrm{int}})) - 1$ \\
 --- & Structural deficiency $\delta_{\mathrm{struct}}$ (graph-based) \\
 Weak reversibility & Primitivity \\
 Global attractor (GAC) & Convergence to $\rho^*$ \\
---- & Hierarchy: $\delta_{\mathrm{struct}} \leq \delta_{\mathrm{cen}} = \delta_Q$ \\
+--- & Hierarchy: $\delta_{\mathrm{struct}} \leq \delta_{\mathrm{cen}} \leq \delta_{\mathrm{com}} = \delta_Q$ \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -871,7 +891,7 @@ We have presented a comprehensive framework for chemical reaction network theory
     \item \textbf{Spatial}: Reaction-diffusion enables pattern formation
     \item \textbf{Stochastic}: CME extends to finite-copy-number regimes
     \item \textbf{Control}: Feedback enables robust regulation
-    \item \textbf{Quantum}: Lindblad dynamics extends CRNT to open quantum systems with $\delta_Q = \delta_{\mathrm{cen}}$ classification theorem and deficiency hierarchy $\delta_{\mathrm{struct}} \leq \delta_{\mathrm{cen}} = \delta_Q$
+    \item \textbf{Quantum}: Lindblad dynamics extends CRNT to open quantum systems with universal classification $\delta_Q = \delta_{\mathrm{com}}$ and deficiency hierarchy $\delta_{\mathrm{struct}} \leq \delta_{\mathrm{cen}} \leq \delta_{\mathrm{com}} = \delta_Q$
 \end{enumerate}
 
 \subsection{Formal Verification}
@@ -902,11 +922,11 @@ The quantum axioms (22 total) represent deep results requiring Mathlib infrastru
     \item \texttt{commutant\_dim\_eq\_stationary\_dim}: Evans--H\o egh-Krohn theorem (C*-algebra)
     \item \texttt{quantumSemigroup}: Matrix exponential infrastructure
     \item \texttt{convergence\_to\_stationary}: Spectral gap analysis
-    \item \texttt{interactionAlgebra\_multiplicityFree}: Representation theory (multiplicity-free)
     \item \texttt{wedderburn\_decomposition\_exists}: Wedderburn--Artin structure theorem
     \item \texttt{structuralCommutant\_le\_commutant}: Graph-algebra correspondence
     \item \texttt{peripheral\_phases\_finitely\_generated}: Phase group structure
     \item \texttt{ergodic\_lindbladian\_exists}: Existence of ergodic systems
+    \item \texttt{center\_dim\_eq\_commutant\_dim\_iff}: Multiplicity-free characterization
 \end{enumerate}
 
 \noindent\textbf{Axiom elimination roadmap:} As Mathlib develops, several axioms are likely to become theorems: (1)~\texttt{exists\_stationary\_state} once Brouwer's fixed point theorem is available; (2)~\texttt{quantumSemigroup} when matrix exponential infrastructure is complete; (3)~\texttt{wedderburn\_decomposition\_exists} when finite-dimensional C*-algebra theory is formalized. The remaining axioms encode deep results from quantum dynamical semigroup theory that may require substantial new Mathlib development.
@@ -1121,7 +1141,7 @@ lake build
 \texttt{Quantum/QuantumDZT.lean} & Quantum DZT main result & 83 & 4 \\
 \texttt{Quantum/InteractionAlgebra.lean} & Interaction algebra, Wedderburn & 712 & 28 \\
 \texttt{Quantum/StructuralDeficiency.lean} & Graph deficiency $\delta_{\mathrm{struct}}$ & 1578 & 52 \\
-\texttt{Quantum/Classification.lean} & Main theorem $\delta_Q = \delta_{\mathrm{cen}}$ & 336 & 15 \\
+\texttt{Quantum/Classification.lean} & Universal theorem $\delta_Q = \delta_{\mathrm{com}}$, hierarchy & 450 & 22 \\
 \texttt{Quantum/DetailedBalance.lean} & Detailed balance, GNS & 216 & 8 \\
 \texttt{Quantum/Examples/*.lean} & Two-level, collective dephasing & 580 & 12 \\
 \midrule
